@@ -1,2 +1,3 @@
-# bdl-redshift
-Bayesian deep learning to predict redshift with uncertainty
+# Bayesian Redshift
+
+Bayesian learning to predict redshift with uncertainty.
