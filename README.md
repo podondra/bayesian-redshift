@@ -5,15 +5,15 @@ Bayesian learning to predict redshift with uncertainty.
 ## TODO List
 
 1. data preparation of DR16Q superset
-    - standardisation
     - continuum normalisation
+    - standardisation (maybe division by max(abs(flux)))
     - extract baselines `Z_PCA`, `Z_QN`, `Z_PIPELINE`, `Z_VI` (true label)...
     - labels should be column vectors which is shape (N, 1)
     - data type should be float (32 bits) 
 2. evaluation
     - as classification? (catastrophic redshift, see DR16Q paper)
 3. experiments
-    - linear regression
+    - ~~linear regression~~
     - Bayesian linear regression
     - fully-connected network
     - Bayesian neural network
