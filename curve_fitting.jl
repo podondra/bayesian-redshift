@@ -251,7 +251,7 @@ where $\mathbf{I}$ is th unit matrix, and we have defined the vector $\mathbf{\p
 begin
 	M_bayes = 9
 	α = 5e-3
-	β = 0.3 ^ -1    # the known noise variance
+	β = (0.3 ^ -1) ^ 2    # the known noise variance
 	ϕ = x -> polynomial_features([x], M_bayes)'
 end;
 
