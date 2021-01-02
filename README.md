@@ -29,3 +29,9 @@ Bayesian learning to predict redshift with uncertainty.
     - "a well-defined probabilistic model, it is always possible to generate
       data from the model; such 'imaginary' data provide a window into the
       'mind' of the probabilistic model" (Ghahramani 2015)
+
+## Installation
+
+Install PyTorch:
+
+    $ pip install torch==1.7.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
