@@ -69,13 +69,18 @@ $p(\mathsf{t} | \mathbf{X}, \mathbf{w}, \beta) = \prod \mathcal{N}(t_n | \mathbf
 # ╔═╡ 5ded6f22-2d81-11eb-1ecf-15831fa58960
 begin
 	fid = h5open("data/dataset.hdf5", mode="r")
-	dset = fid["X_tr"]
-	X = read(dset)'
+	X = read(fid["X_tr"])'
 	t = convert.(Float32, read(fid["z_tr"]))
+	X_va = read(fid["X_va"])'
+	t_va = convert.(Float32, read(fid["z_va"]))
 	N = size(X, 1)
+	N_va = size(X_va, 1)
 	close(fid)
 	N, size(X), size(t)
 end
+
+# ╔═╡ 18ca93fc-4da7-11eb-03ad-95d833f5ffbc
+N_va, size(X_va), size(t_va)
 
 # ╔═╡ a6f552ac-405c-11eb-3172-cd1d78946585
 md"Note that $\mathbf{x}$ will always appear in the set of conditioning variables, and so from now on we will drop the explicit $\mathbf{x}$ from expressions. Taking the logarithm of the likelihood function, and making use of the standard form for the univariate Gaussian, we have
@@ -139,30 +144,59 @@ spectral_lines = Dict(
 	"O III" => 1665.85,
 	"Hα" => 6564.61)
 
+# ╔═╡ 44665762-4da7-11eb-3142-d5b022bfbb32
+Φ_va = [ones(Float32, N_va) X_va]
+
+# ╔═╡ 5662d814-4da7-11eb-2796-21b20d8cec23
+y_va = Φ_va * w_ml
+
 # ╔═╡ 5aeffdbc-40ff-11eb-35dc-255d30226137
-i = rand(1:N)
+i = rand(1:N_va)
 
 # ╔═╡ bdceb186-2e2f-11eb-0225-d7891641ec07
 begin
 	# TODO check the range after preprocessing
 	wave = 10 .^ range(3.5836, 3.9559, length=512)
 	foo = plot(
-		wave, X[i, :], xlim=(wave[1], wave[end]),
+		wave, X_va[i, :], xlim=(wave[1], wave[end]),
 		legend=:none, xlabel="wavelength (Angstroms)")
 	for (line, λ_emit) in pairs(spectral_lines)
 		scatter!(
-			[z2λ_obs(t[i], λ_emit)], [0],
+			[z2λ_obs(t_va[i], λ_emit)], [0],
 			marker=(:vline, :black), series_annotation=[text(line, 8, :top)])
 		λ_error = z2λ_obs(σ_ml, λ_emit)
 		scatter!(
-			[z2λ_obs(y[i], λ_emit)], [0],
+			[z2λ_obs(y_va[i], λ_emit)], [0],
 			marker=(:vline, :red), series_annotation=[text(line, 8, :bottom)])
 	end
 	foo
 end
 
-# ╔═╡ 5641e4c0-2e2f-11eb-0cda-41a92f0fbdb1
-histogram(t - y)
+# ╔═╡ 712df3d0-4da3-11eb-2160-6dcd45a1aa19
+function rmse(t, y)
+	sqrt(1 / N * (t - y)'  * (t - y))
+end
+
+# ╔═╡ e5aa288c-4da3-11eb-0d6a-17ccbbc907ee
+rmse(t_va, y_va)
+
+# ╔═╡ 0b89afc8-4da4-11eb-14e6-4d62de20f275
+md"$\Delta v = c \frac{|z - z_\mathrm{VI}|}{1 + z_\mathrm{VI}}$"
+
+# ╔═╡ 05583b6a-4da4-11eb-2b67-e11eac0a33ae
+function compute_delta_v(z, z_vi)
+	# the speed of light in vacuum (km / s)
+	c = 299792.458
+	c .* abs.(z - z_vi) ./ (1 .+ z_vi)
+end
+
+# ╔═╡ 9e8d3812-4da4-11eb-0a57-dfba9dddc2b2
+function catastrophic_redshift_ratio(t, y)
+	sum(compute_delta_v(t, y) .> 3000) / length(t)
+end
+
+# ╔═╡ 2af527c4-4da5-11eb-114a-7fb9772594b3
+catastrophic_redshift_ratio(t_va, y_va)
 
 # ╔═╡ c1424a2e-4060-11eb-25f0-91259901fbfb
 md"## Bayesian Linear Regression
@@ -172,7 +206,7 @@ We turn to Bayesian treatment of linear regression, which will avoid the over-fi
 # ╔═╡ c2c5fc70-4104-11eb-2f83-d11f8ecd277f
 md"### Parameter Distribution
 
-We begin by introducing a prior probability distribution over the model parameters $\mathbf{w}$. For the moment, we shall treat the noise precision parameter $\beta$ as a known constant. First note that the likelihood function $p(\mathsf{t} | \mathbf{w}) is the exponential of a quadratic function of $\mathbf{w}$. The corresponding conjugate prior is therefore given by a Gaussian distribution of the form
+We begin by introducing a prior probability distribution over the model parameters $\mathbf{w}$. For the moment, we shall treat the noise precision parameter $\beta$ as a known constant. First note that the likelihood function $p(\mathsf{t} | \mathbf{w})$ is the exponential of a quadratic function of $\mathbf{w}$. The corresponding conjugate prior is therefore given by a Gaussian distribution of the form
 
 $p(\mathbf{w}) = \mathcal{N}(\mathbf{w} | \mathbf{m}_0, \mathbf{S}_0)$
 
@@ -258,9 +292,7 @@ where the variance $\sigma^2_N(\mathbf{x})$ of the predictive distribution is gi
 
 $\sigma^2_N(\mathbf{x}) = \frac{1}{\beta} + \boldsymbol\phi(\mathbf{x})^\mathrm{T} \mathbf{S}_N \boldsymbol\phi(\mathbf{x}).$
 
-The first term represent the noise on the data whereas the second term reflects the uncertainty associated with the parameters $\mathbf{w}$.
-
-Note that, if both $\mathbf{w}$ and $\beta$ are treated as unknown, then we can introduce a conjugate prior distribution $p(\mathbf{w}, \beta)$ that will be given by a Gaussian-gamma distribution. In this case, the predictive distribution is a Student's t-distribution."
+The first term represent the noise on the data whereas the second term reflects the uncertainty associated with the parameters $\mathbf{w}$."
 
 # ╔═╡ 7411237a-4113-11eb-2758-19dedb770b85
 @bind N_varied Slider(1:20, default=1, show_value=true)
@@ -297,12 +329,46 @@ begin
 	plot(p1, p2, layout=l)
 end
 
+# ╔═╡ 8d710c68-4da7-11eb-0ff1-b51ba31b19ef
+md"Note that, if both $\mathbf{w}$ and $\beta$ are treated as unknown, then we can introduce a conjugate prior distribution $p(\mathbf{w}, \beta)$ that will be given by a Gaussian-gamma distribution. In this case, the predictive distribution is a Student's t-distribution."
+
+# ╔═╡ e1f04b28-4da7-11eb-179b-7bc8a5391136
+begin
+	# TODO introduce a conjugate prior ditribution p(w, β)
+	β = 1.0
+	α = 2.0
+	S = inv(α * I + β * Φ' * Φ)
+	m = β * S * Φ' * t
+end
+
+# ╔═╡ f128c9ac-4da8-11eb-029b-45d1c61bb4b8
+y_va_bayes = Φ_va * m
+
+# ╔═╡ a1550f8e-4da9-11eb-27ef-f5d76d693e25
+rmse(t_va, y_va_bayes)
+
+# ╔═╡ 174a9e60-4da9-11eb-25ee-7f4d092a8e59
+y_va_std = sqrt.([1 / β + Φ_va[i, :]' * S * Φ_va[i, :] for i = 1:N_va])
+
+# ╔═╡ 5c3e572a-4da9-11eb-0270-2b848a6b2595
+histogram(y_va_std)
+
+# ╔═╡ d3e4554a-4da9-11eb-3975-b526831e612d
+catastrophic_redshift_ratio(t_va, y_va_bayes)
+
+# ╔═╡ be5f3988-4da9-11eb-06b2-5767b9f52edd
+begin
+	idx = y_va_std .< 1.001
+	sum(idx), catastrophic_redshift_ratio(t_va[idx], y_va_bayes[idx])
+end
+
 # ╔═╡ Cell order:
 # ╟─477e848c-403f-11eb-1f94-11d67a92db4b
 # ╟─57350c8e-4047-11eb-3b1f-7f66e571cefc
 # ╟─56bda126-4047-11eb-01e5-1b21bfafe659
 # ╠═58951756-2d80-11eb-16e5-73b4b46539b1
 # ╠═5ded6f22-2d81-11eb-1ecf-15831fa58960
+# ╠═18ca93fc-4da7-11eb-03ad-95d833f5ffbc
 # ╟─a6f552ac-405c-11eb-3172-cd1d78946585
 # ╠═80db7738-405d-11eb-04fb-29b8aa40570a
 # ╠═e925676e-2d8a-11eb-114e-9f5a397e579d
@@ -312,9 +378,16 @@ end
 # ╠═0e6e5b3c-405f-11eb-31a0-15f78cb09cfc
 # ╠═62077140-40fd-11eb-0c68-07fa7eed9338
 # ╠═c2898ec2-40fd-11eb-3edc-5d85d0ecb157
+# ╠═44665762-4da7-11eb-3142-d5b022bfbb32
+# ╠═5662d814-4da7-11eb-2796-21b20d8cec23
 # ╠═5aeffdbc-40ff-11eb-35dc-255d30226137
 # ╠═bdceb186-2e2f-11eb-0225-d7891641ec07
-# ╠═5641e4c0-2e2f-11eb-0cda-41a92f0fbdb1
+# ╠═712df3d0-4da3-11eb-2160-6dcd45a1aa19
+# ╠═e5aa288c-4da3-11eb-0d6a-17ccbbc907ee
+# ╟─0b89afc8-4da4-11eb-14e6-4d62de20f275
+# ╠═05583b6a-4da4-11eb-2b67-e11eac0a33ae
+# ╠═9e8d3812-4da4-11eb-0a57-dfba9dddc2b2
+# ╠═2af527c4-4da5-11eb-114a-7fb9772594b3
 # ╟─c1424a2e-4060-11eb-25f0-91259901fbfb
 # ╟─c2c5fc70-4104-11eb-2f83-d11f8ecd277f
 # ╠═f7494ac2-410b-11eb-23f5-a5e328c708ed
@@ -324,3 +397,11 @@ end
 # ╟─98f8c482-4121-11eb-131d-2157366cfbfb
 # ╠═7411237a-4113-11eb-2758-19dedb770b85
 # ╠═3ce55264-4112-11eb-3b8c-497d16731428
+# ╟─8d710c68-4da7-11eb-0ff1-b51ba31b19ef
+# ╠═e1f04b28-4da7-11eb-179b-7bc8a5391136
+# ╠═f128c9ac-4da8-11eb-029b-45d1c61bb4b8
+# ╠═a1550f8e-4da9-11eb-27ef-f5d76d693e25
+# ╠═174a9e60-4da9-11eb-25ee-7f4d092a8e59
+# ╠═5c3e572a-4da9-11eb-0270-2b848a6b2595
+# ╠═d3e4554a-4da9-11eb-3975-b526831e612d
+# ╠═be5f3988-4da9-11eb-06b2-5767b9f52edd
