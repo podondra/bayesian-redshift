@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.17
+# v0.12.18
 
 using Markdown
 using InteractiveUtils
@@ -48,7 +48,7 @@ x, t = synthetic_data(N);
 
 # ╔═╡ 0bb4df7e-2fe3-11eb-0f41-3dbcf30f7707
 begin
-	x_range = range(0, 1, length=256)
+	x_range = range(-1, 2, length=256)
 	plot(x_range, sin.(2 * π .* x_range), label="sin(2πx)")
 	scatter!(x, t, label="training set", xlabel="x", ylabel="t")
 end
@@ -275,11 +275,11 @@ function s²(x, x_train, α, β, ϕ)
 end
 
 # ╔═╡ c62f363e-3f7d-11eb-26ba-a76c0a861ca2
-@bind N_bayes Slider(2:N_max, default=15, show_value=true)
+@bind N_bayes Slider(1:N_max, default=15, show_value=true)
 
 # ╔═╡ 6f3d1eac-3ebc-11eb-0e00-1f0c2b2ad500
 begin
-	plot(x_range, sin.(2 * π .* x_range), label="sin(2πx)")
+	ax1 = plot(x_range, sin.(2 * π .* x_range), label="sin(2πx)")
 	scatter!(
 		x_varied[1:N_bayes], t_varied[1:N_bayes],
 		label="training data", xlabel="x", ylabel="t")
@@ -288,6 +288,10 @@ begin
 		[m(x_range[i], x_varied[1:N_bayes], t_varied[1:N_bayes], α, β, ϕ) for i = 1:length(x_range)],
 		ribbon=[sqrt.(s²(x_range[i], x_varied[1:N_bayes], α, β, ϕ) for i = 1:length(x_range))],
 		ylim=(-1.5, 1.5))
+	ax2 = plot(
+		x_range, [s²(x_range[i], x_varied[1:N_bayes], α, β, ϕ) for i = 1:length(x_range)],
+		yscale=:log, legend=:none, ylabel="s²", xlabel="x")
+	plot(ax1, ax2, layout=(2, 1))
 end
 
 # ╔═╡ Cell order:
