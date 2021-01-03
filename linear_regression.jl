@@ -1,11 +1,23 @@
 ### A Pluto.jl notebook ###
-# v0.12.17
+# v0.12.18
 
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        el
+    end
+end
+
 # ╔═╡ 58951756-2d80-11eb-16e5-73b4b46539b1
 using HDF5, LinearAlgebra, Plots
+
+# ╔═╡ f7494ac2-410b-11eb-23f5-a5e328c708ed
+using Random, Distributions, StatsPlots, PlutoUI
 
 # ╔═╡ 477e848c-403f-11eb-1f94-11d67a92db4b
 md"# Linear Models for Regression
@@ -112,20 +124,178 @@ and so we see that the inverse of the noise precision is given by the residual v
 # ╔═╡ 0e6e5b3c-405f-11eb-31a0-15f78cb09cfc
 σ_ml = sqrt(σ²_ml)
 
-# ╔═╡ 2edf19a4-2e32-11eb-1bcb-a1e631a4b25b
-function z_to_wave(z)
-	(1 + z) * 1909
+# ╔═╡ 62077140-40fd-11eb-0c68-07fa7eed9338
+function z2λ_obs(z, λ_emit)
+	(1 + z) * λ_emit
 end
+
+# ╔═╡ c2898ec2-40fd-11eb-3edc-5d85d0ecb157
+# http://classic.sdss.org/dr6/algorithms/linestable.html
+spectral_lines = Dict(
+	"Lyα" => 1215.24,
+	"C IV" => 1549.48,
+	"C III" => 1908.734,
+	"Mg II" => 2799.117,
+	"O III" => 1665.85,
+	"Hα" => 6564.61)
+
+# ╔═╡ 5aeffdbc-40ff-11eb-35dc-255d30226137
+i = rand(1:N)
 
 # ╔═╡ bdceb186-2e2f-11eb-0225-d7891641ec07
 begin
+	# TODO check the range after preprocessing
 	wave = 10 .^ range(3.5836, 3.9559, length=512)
-	plot(wave, X[1, :])
-	vline!([z_to_wave(y[1])])
+	foo = plot(
+		wave, X[i, :], xlim=(wave[1], wave[end]),
+		legend=:none, xlabel="wavelength (Angstroms)")
+	for (line, λ_emit) in pairs(spectral_lines)
+		scatter!(
+			[z2λ_obs(t[i], λ_emit)], [0],
+			marker=(:vline, :black), series_annotation=[text(line, 8, :top)])
+		λ_error = z2λ_obs(σ_ml, λ_emit)
+		scatter!(
+			[z2λ_obs(y[i], λ_emit)], [0],
+			marker=(:vline, :red), series_annotation=[text(line, 8, :bottom)])
+	end
+	foo
 end
 
 # ╔═╡ 5641e4c0-2e2f-11eb-0cda-41a92f0fbdb1
 histogram(t - y)
+
+# ╔═╡ c1424a2e-4060-11eb-25f0-91259901fbfb
+md"## Bayesian Linear Regression
+
+We turn to Bayesian treatment of linear regression, which will avoid the over-fitting problem of maximum likelihood, and which will also lead to automatic methods of determining model complexity using the training data alone."
+
+# ╔═╡ c2c5fc70-4104-11eb-2f83-d11f8ecd277f
+md"### Parameter Distribution
+
+We begin by introducing a prior probability distribution over the model parameters $\mathbf{w}$. For the moment, we shall treat the noise precision parameter $\beta$ as a known constant. First note that the likelihood function $p(\mathsf{t} | \mathbf{w}) is the exponential of a quadratic function of $\mathbf{w}$. The corresponding conjugate prior is therefore given by a Gaussian distribution of the form
+
+$p(\mathbf{w}) = \mathcal{N}(\mathbf{w} | \mathbf{m}_0, \mathbf{S}_0)$
+
+having mean $\mathbf{m}_0$ and covariance $\mathbf{S}_0$.
+
+Next we compute the posterior distribution, which is proportional to the product of the likelihood function and the prior. Due to the choice of a conjugate Gaussian prior distribution, the posterior will also be Gaussian. The posterior distribution is in the form
+
+$p(\mathbf{w} | \mathsf{t}) = \mathcal{N}(\mathbf{w} | \mathbf{m}_N, \mathbf{S}_N)$
+
+where
+
+$\mathbf{m}_N = \mathbf{S}_N (\mathbf{S}^{-1}_0 \mathbf{m}_0 + \beta \boldsymbol\Phi^\mathrm{T} \mathsf{t})$
+
+$\mathbf{S}^{-1}_N = \mathbf{S}^{-1}_0 + \beta \boldsymbol\Phi^\mathrm{T} \boldsymbol\Phi.$
+
+Note that because the posterior distribution is Gaussian, its mode coincides with its mean. Thus the maximum posterior weight vector is simply given by $\mathbf{w}_\mathrm{MAP} = \mathbf{m}_N$. If we consider an infinitely broad prior $\mathbf{S}_0 = \alpha^{-1} \mathbf{I}$ with $\alpha \to 0$, the mean $\mathbf{m}_N$ of the posterior distribution reduces to the maximum likelihood value $\mathbf{w}_\mathrm{ML}$. Similarly, if $N = 0$, then the posterior distribution reverts to the prior.
+
+For the remainder, we shall consider a particular form of Gaussian prior in order to simplify the treatment. Specifically, we consider a zero-mean isotropic Gaussian governed by a single precision parameter $\alpha$ so that
+
+$p(\mathbf{w}) = \mathcal{N}(\mathbf{w} | \mathbf{0}, \alpha^{-1} \mathbf{I})$
+
+and the corresponding posterior distribution over $\mathbf{w}$ is then given with
+
+$\mathbf{m}_N = \beta \mathbf{S}_N \boldsymbol\Phi^\mathrm{T} \mathsf{t}$
+
+$\mathbf{S}^{-1}_N = \alpha \mathbf{I} + \beta \boldsymbol\Phi^\mathrm{T} \boldsymbol\Phi.$"
+
+# ╔═╡ 20627ada-410b-11eb-3733-8b1b8ca0bcaf
+function synthetic_data(N)
+	# input values are generated uniformly in range (-1, 1)
+	d = Uniform(-1, 1)
+	x = rand(d, N)
+	# target values are f(x, a) = a₀ + a₁ x
+	a₀ = -0.3
+	a₁ = 0.5
+	f = x -> a₀ + a₁ * x
+	# and adding random noise with a Gaussian distribution with std 0.2
+	d = Normal(0, 0.2)
+	t = f.(x) + rand(d, N)
+	x, t
+end
+
+# ╔═╡ bc762fd6-410c-11eb-13c8-9fb7f2478ac4
+begin
+	N_syn = 20
+	x_syn, t_syn = synthetic_data(N_syn)
+	scatter(x_syn, t_syn, xlabel="x", ylabel="t", legend=:none)
+end
+
+# ╔═╡ 527da3e0-4114-11eb-3af1-5ff21c7040e6
+begin
+	β_syn = (1 / 0.2) ^ 2
+	α_syn = 2.0
+	S0_syn = α_syn ^ -1 * I
+	m0_syn = zeros(2)
+	prior = MvNormal(m0_syn, S0_syn)
+	
+	N_range = 256
+	w0_range = range(-1, 1, length=N_range)
+	w1_range = range(-1, 1, length=N_range)
+	prior_density = zeros(N_range, N_range)
+	for i = 1:N_range, j = 1:N_range
+		prior_density[i, j] = pdf(prior, [w0_range[i], w1_range[j]])
+	end
+	
+	contour(w0_range, w1_range, prior_density', xlabel="w₀", ylabel="w₁")
+	title!("prior")
+	scatter!([-0.3], [0.5], legend=:none)
+end
+
+# ╔═╡ 98f8c482-4121-11eb-131d-2157366cfbfb
+md"### Predictive Distribution
+
+In practice, we are not usually interested in the value of $\mathbf{w}$ itself but rather in making predictions of $t$ for new values of $\mathbf{x}$. This requires that we evaluate the *predictive distribution* defined by
+
+$p(t | \mathsf{t}, \alpha, \beta) = \int p(t | \mathbf{w}, \beta) p(\mathbf{w} | \mathsf{t}, \alpha, \beta) \mathrm{d}\mathbf{w}$
+
+in which $\mathsf{t}$ is the vector of target values from the training set, and we have omitted the corresponding input vectors from the right-hand side of the conditioning statements to simplify the notation. We see that it involves the convolution of two Gaussian distributions, and so we see that the predtictive distribution takes the form
+
+$p(t | \mathbf{x}, \mathsf{t}, \alpha, \beta) = \mathcal{N}(t | \mathbf{m}_N^\mathrm{T} \boldsymbol\phi(\mathbf{x}), \sigma^2_N(\mathbf{x}))$
+
+where the variance $\sigma^2_N(\mathbf{x})$ of the predictive distribution is given by
+
+$\sigma^2_N(\mathbf{x}) = \frac{1}{\beta} + \boldsymbol\phi(\mathbf{x})^\mathrm{T} \mathbf{S}_N \boldsymbol\phi(\mathbf{x}).$
+
+The first term represent the noise on the data whereas the second term reflects the uncertainty associated with the parameters $\mathbf{w}$.
+
+Note that, if both $\mathbf{w}$ and $\beta$ are treated as unknown, then we can introduce a conjugate prior distribution $p(\mathbf{w}, \beta)$ that will be given by a Gaussian-gamma distribution. In this case, the predictive distribution is a Student's t-distribution."
+
+# ╔═╡ 7411237a-4113-11eb-2758-19dedb770b85
+@bind N_varied Slider(1:20, default=1, show_value=true)
+
+# ╔═╡ 3ce55264-4112-11eb-3b8c-497d16731428
+begin
+	Φ_syn = [ones(N_syn) x_syn][1:N_varied, :]
+	S_syn = inv(α_syn * I + β_syn * Φ_syn' * Φ_syn)
+	m_syn = β_syn * S_syn * Φ_syn' * t_syn[1:N_varied]
+	posterior = MvNormal(m_syn, S_syn)
+
+	posterior_density = zeros(N_range, N_range)
+	for i = 1:N_range, j = 1:N_range
+		posterior_density[i, j] = pdf(posterior, [w0_range[i], w1_range[j]])
+	end
+	
+	l = @layout [a b]
+	
+	p1 = contour(w0_range, w1_range, posterior_density', xlabel="w₀", ylabel="w₁")
+	title!("posterior (N = $(N_varied))")
+	scatter!([-0.3], [0.5], legend=:none)
+	
+	p2 = scatter(
+		x_syn[1:N_varied], t_syn[1:N_varied], xlabel="x", ylabel="t", legend=:none,
+		xlim=(-1, 1), ylim=(-1, 1))
+	x_range = range(-1, 1, length=N_range)
+	Φ_range = [ones(N_range) x_range]
+	w = rand(posterior, 6)
+	plot!(x_range, Φ_range * w, color=:green)
+	plot!(
+		x_range, Φ_range * m_syn, color=:red,
+		ribbon=sqrt.([1 / β_syn + Φ_range[i, :]' * S_syn * Φ_range[i, :] for i = 1:length(x_range)]))
+
+	plot(p1, p2, layout=l)
+end
 
 # ╔═╡ Cell order:
 # ╟─477e848c-403f-11eb-1f94-11d67a92db4b
@@ -140,6 +310,17 @@ histogram(t - y)
 # ╟─70a584aa-405d-11eb-0f58-f7c68ee0f7d4
 # ╠═2feba2f2-405e-11eb-3b49-7bf26d78ddb9
 # ╠═0e6e5b3c-405f-11eb-31a0-15f78cb09cfc
-# ╠═2edf19a4-2e32-11eb-1bcb-a1e631a4b25b
+# ╠═62077140-40fd-11eb-0c68-07fa7eed9338
+# ╠═c2898ec2-40fd-11eb-3edc-5d85d0ecb157
+# ╠═5aeffdbc-40ff-11eb-35dc-255d30226137
 # ╠═bdceb186-2e2f-11eb-0225-d7891641ec07
 # ╠═5641e4c0-2e2f-11eb-0cda-41a92f0fbdb1
+# ╟─c1424a2e-4060-11eb-25f0-91259901fbfb
+# ╟─c2c5fc70-4104-11eb-2f83-d11f8ecd277f
+# ╠═f7494ac2-410b-11eb-23f5-a5e328c708ed
+# ╠═20627ada-410b-11eb-3733-8b1b8ca0bcaf
+# ╠═bc762fd6-410c-11eb-13c8-9fb7f2478ac4
+# ╠═527da3e0-4114-11eb-3af1-5ff21c7040e6
+# ╟─98f8c482-4121-11eb-131d-2157366cfbfb
+# ╠═7411237a-4113-11eb-2758-19dedb770b85
+# ╠═3ce55264-4112-11eb-3b8c-497d16731428
