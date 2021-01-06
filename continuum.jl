@@ -117,7 +117,7 @@ begin
 	hdul = FITS(filename)
 	flux = read(hdul[2], "flux")
 	loglam = read(hdul[2], "loglam")
-	plot(loglam, flux, label=filename)
+	plot(loglam, flux, label=filename, ylabel="flux", xlabel="wavelength")
 end
 
 # ╔═╡ a7583e50-3612-11eb-10ed-d9b759a61fab
@@ -162,7 +162,7 @@ n_best, a_best = dls_fit(X, y, 2, 0.9)
 # ╔═╡ 9250244a-35ff-11eb-0788-1f7af6a66e01
 begin
 	scatter(X[n_best + 1:end, 2], y[n_best + 1:end], label="distant points")
-	scatter!(X[1:n_best, 2], y[1:n_best], label="close points")
+	scatter!(X[1:n_best, 2], y[1:n_best], label="close points", legend=:topleft)
 	continuum = polynomial_features(Vector{Float64}(loglam), degree) * a_best
 	p1 = plot!(loglam, continuum, label="continuum")
 	p2 = plot(loglam, flux - continuum, label="normalised")
