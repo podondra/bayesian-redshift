@@ -5,7 +5,8 @@ Bayesian learning to predict redshift with uncertainty.
 ## TODO List
 
 1. data preparation of DR16Q superset
-    - continuum normalisation
+    - ~~continuum normalisation~~
+    - parallelise
     - standardisation (maybe division by max(abs(flux)))
     - ~~extract baselines `Z_PCA`, `Z_QN`, `Z_PIPELINE`, `Z_VI` (true label)...~~
     - ~~data type should be float (32 bits)~~

@@ -150,7 +150,7 @@ begin
 end
 
 # ╔═╡ 05745fcc-3ea7-11eb-1e12-dbd34cfd652d
-md"## Bayesian probabilities
+md"## Bayesian Probabilities
 
 We capture our assumptions about $\mathbf{w}$ in the form of a prior probability distribution $p(\mathbf{w})$. The effect of the observed data $\mathcal{D} = \{t_1, \dots t_N\}$ is expressed throught the conditional probability $p(\mathbf{w} | \mathcal{D})$. Bayes' theorem, which taks the form
 
