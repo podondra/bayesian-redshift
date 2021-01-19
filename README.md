@@ -2,17 +2,34 @@
 
 Bayesian learning to predict redshift with uncertainty.
 
+## Performance Metric
+
+"Determine your goals—what error metric to use, and your target value for this error metric.
+These goals and error metrics should be drive by the problem that the applicatoin is intended to solve." (Goodfellow et al., 2016, p. 416)
+
+I should derive the target value of performace metric from SDSS DR16Q paper (Lyke et al., 2020) and QuasarNet (Busca and Balland, 2018).
+
+I can use uncertainty to refuse to make prediction of redshift.
+But, I have to keep coverage high:
+
+"In some applications, it is possible for the machine learning system to refuse to make a decision.
+This is useful when the machine learning algorithm can estimate how confident it should be about a decision, especially if a wrong decision can be harmful and if a human operator is able to occasionally take over.
+[...]
+A natural performance metric to use in this situaiton is **coverage**.
+Coverage is the fraction of examples for wich the machine learning system is able to produce a response.
+It is possible to trade coverage for accuracy." (Goodfellow et al., 2016, p. 419)
+
 ## TODO List
 
 1. data preparation of DR16Q superset
     - ~~continuum normalisation~~
-    - parallelise
-    - standardisation (maybe division by max(abs(flux)))
-    - ~~extract baselines `Z_PCA`, `Z_QN`, `Z_PIPELINE`, `Z_VI` (true label)...~~
+    - ~~parallelise~~
+    - spectra scaling? (maybe division by max(abs(flux)))
+    - ~~extract baselines: `Z_PCA`, `Z_QN`, `Z_PIPELINE`, `Z_VI` (true label)~~
     - ~~data type should be float (32 bits)~~
 2. evaluation
     - ~~root-mean-square error (RMSE)~~
-    - ~~as classification? (catastrophic redshift, see DR16Q paper)~~
+    - ~~as classification (catastrophic redshift, see DR16Q paper)~~
 3. experiments
     - ~~linear regression~~
     - ~~Bayesian linear regression~~
@@ -37,3 +54,11 @@ Bayesian learning to predict redshift with uncertainty.
 Install PyTorch:
 
     $ pip install torch==1.7.1+cu101 -f https://download.pytorch.org/whl/torch_stable.html
+
+## Bibliography
+
+Busca, N., Balland, C., 2018. QuasarNET: Human-level spectral classification and redshifting with Deep Neural Networks. arXiv:1808.09955 [astro-ph].
+
+Goodfellow, I., Bengio, Y., Courville, A., 2016. Deep learning, Adaptive computation and machine learning. The MIT Press, Cambridge, Massachusetts.
+
+Lyke, B.W. et al., 2020. The Sloan Digital Sky Survey Quasar Catalog: Sixteenth Data Release. ApJS 250, 8. https://doi.org/10.3847/1538-4365/aba623
