@@ -2,7 +2,28 @@
 
 Bayesian learning to predict redshift with uncertainty.
 
+## Data
+
+Get data so that the result is comparable.
+
+"The catalog consists of two subcatalogs: the DR16Q superset containing 1,440,615 observations targeted as quasars, and the quasar-only set containing 750,414 quasars.
+[...]
+We include automated pipeline redshifts for all quasars observed as part of SDSS-III/IV and confident visual inspection redshifts for 320,161 quasars [probably objects not spectra].
+[...]
+DR16Q includes homogeneous redshifts derived using principal component analysis, including six separate emission line PCA redshifts." (Lyke et al., 2020)
+
 ## Performance Metric
+
+Goal should be to minimize the ration on catasthropic redshift. (Lyke et al., 2020)
+
+Method | Catastrophic Redshift Ratio | Root-Mean-Square Error
+------ | --------------------------- | ----------------------
+Linear Regression | 0.96330 | 0.250212
+Bayesian Linear Regression | 0.96334 | 0.250212
+Fully-Connected Neural Network | 0.12796 | 0.209840
+`Z_PIPE` | 0.08174 | 0.610463
+`Z_QN` | 0.13182 | 0.708504
+`Z_PCA` | 0.01594 | 0.0453812
 
 "Determine your goals—what error metric to use, and your target value for this error metric.
 These goals and error metrics should be drive by the problem that the applicatoin is intended to solve." (Goodfellow et al., 2016, p. 416)
@@ -18,6 +39,25 @@ This is useful when the machine learning algorithm can estimate how confident it
 A natural performance metric to use in this situaiton is **coverage**.
 Coverage is the fraction of examples for wich the machine learning system is able to produce a response.
 It is possible to trade coverage for accuracy." (Goodfellow et al., 2016, p. 419)
+
+## Default Baseline Models
+
+`Z_PIPE`: Probably some kind of template matching.
+
+`Z_QN`: See https://github.com/ngbusca/QuasarNET.
+
+`Z_PCA`: Probably unsupervised technique to improve given estimate (prior, i.e. `Z_PIPE`). See https://github.com/londumas/redvsblue. May be use to improve my prediction.
+
+I should use ConvNet and batch normalization (but is compatible with Bayesian approach?):
+
+"If the input has known topological structure (for example, if the input is an image), use a convolutional network.
+In these cases, you should begin by using some kind of piecewise linear unit (ReLUs or their generalizations, such as Leaky ReLUs, PreLus, or maxout)." (Goodfellow et al., 2016, p. 420)
+
+"A reasonable choice of optimization algorithm is SGD with momentum with a decaying learning rate [...]. Another reasonable alternative is Adam.
+Batch normalization can have a dramatic effect on optimization performance, especially for convolutional networks and networks with sigmoidal nonlinearities.
+While it is reasonable to omit batch normalization from the very first baseline, it should be introduced quickly if optimization appears to be problematic." (Goodfellow et al., 2016, p. 420)
+
+"Early stopping should be used almost universally." (Goodfellow et al., 2016, p. 420)
 
 ## TODO List
 
