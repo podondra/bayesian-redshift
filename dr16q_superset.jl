@@ -114,7 +114,7 @@ filepaths = fits_filepath.(
 	final_subset[:plate], final_subset[:mjd], final_subset[:fiberid])
 
 # ╔═╡ d3830dee-614a-11eb-1fc8-2bce6cd456f0
-writedlm("spec.lst", filepaths)
+writedlm("data/spec.lst", filepaths)
 
 # ╔═╡ 51962842-614b-11eb-20a7-434c8d7421ea
 md"## Preview"
