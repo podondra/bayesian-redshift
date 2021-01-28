@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=cpufast --time=4:00:00
 #SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=1
-#SBATCH --mem=16G
+#SBATCH --mem=32G
 #SBATCH --job-name=pluto --output=misc/pluto.out
 
 # get tunneling info
