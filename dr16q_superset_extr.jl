@@ -15,13 +15,13 @@ end
 
 @time begin
     fid = h5open("data/dr16q_superset.hdf5", "r+")
-    ids = read(fid["id"])
-    n = length(ids)
+    id = read(fid["id"])
+    n = size(id, 1)
 
     fluxes = Matrix{Float32}(undef, 3826, n)
 
     Threads.@threads for i = 1:n
-        plate, mjd, fiberid = ids[i]
+        plate, mjd, fiberid = id[i, :]
         hdulist = FITS(get_filepath(plate, mjd, fiberid))
         flux = read(hdulist[2], "flux")
         loglam = read(hdulist[2], "loglam")

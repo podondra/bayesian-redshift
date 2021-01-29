@@ -29,7 +29,7 @@ begin
 		class_person=read(superset_fits[2], "CLASS_PERSON"),
 		z=read(superset_fits[2], "Z"),
 		source_z=read(superset_fits[2], "SOURCE_Z"),
-		z_pip=read(superset_fits[2], "Z_PIPE"),
+		z_pipe=read(superset_fits[2], "Z_PIPE"),
 		zwarning=read(superset_fits[2], "ZWARNING"),
 		z_pca=read(superset_fits[2], "Z_PCA"),
 		zwarn_pca=read(superset_fits[2], "ZWARN_PCA"))
@@ -143,6 +143,9 @@ begin
 	id = Matrix(final_subset[[:plate, :mjd, :fiberid]])
 	write_dataset(fid, "id", id)
 	write_dataset(fid, "z", final_subset[:z])
+	write_dataset(fid, "z_pipe", final_subset[:z_pipe])
+	write_dataset(fid, "z_pca", final_subset[:z_pca])
+	write_dataset(fid, "z_qn", final_subset[:z_qn])
 	close(fid)
 end
 

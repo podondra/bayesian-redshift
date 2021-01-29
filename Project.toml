@@ -1,6 +1,7 @@
 [deps]
 CFITSIO = "3b1b4be9-1499-4b22-8d78-7db3344d1961"
 Conda = "8f4d0f93-b110-5947-807f-2305c1781a2d"
+DLSMethod = "2aee5a0c-801d-490a-8eb9-9947a3af43f3"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 Distances = "b4f34e82-e78d-54a5-968a-f98e89d6e8f7"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
