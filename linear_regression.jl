@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.18
+# v0.12.19
 
 using Markdown
 using InteractiveUtils
@@ -14,7 +14,11 @@ macro bind(def, element)
 end
 
 # ╔═╡ 58951756-2d80-11eb-16e5-73b4b46539b1
-using HDF5, LinearAlgebra, Plots
+begin
+	using HDF5, LinearAlgebra, Plots
+	include("evaluation.jl")
+	import .Evaluation
+end
 
 # ╔═╡ f7494ac2-410b-11eb-23f5-a5e328c708ed
 using Random, Distributions, StatsPlots, PlutoUI
@@ -68,7 +72,7 @@ $p(\mathsf{t} | \mathbf{X}, \mathbf{w}, \beta) = \prod \mathcal{N}(t_n | \mathbf
 
 # ╔═╡ 5ded6f22-2d81-11eb-1ecf-15831fa58960
 begin
-	fid = h5open("data/dataset.hdf5", mode="r")
+	fid = h5open("data/dr16q_superset.hdf5", mode="r")
 	X = read(fid["X_tr"])'
 	t = convert.(Float32, read(fid["z_tr"]))
 	X_va = read(fid["X_va"])'
@@ -155,8 +159,10 @@ i = rand(1:N_va)
 
 # ╔═╡ bdceb186-2e2f-11eb-0225-d7891641ec07
 begin
-	# TODO check the range after preprocessing
-	wave = 10 .^ range(3.5836, 3.9559, length=512)
+	EPS = 0.0005
+	LOGLAMMIN, LOGLAMMAX = 3.5812 + EPS, 3.9637 - EPS
+	N_FEATURES = 512
+	wave = 10 .^ range(LOGLAMMIN, LOGLAMMAX, length=N_FEATURES)
 	foo = plot(
 		wave, X_va[i, :], xlim=(wave[1], wave[end]),
 		legend=:none, xlabel="wavelength (Angstroms)")
@@ -172,31 +178,14 @@ begin
 	foo
 end
 
-# ╔═╡ 712df3d0-4da3-11eb-2160-6dcd45a1aa19
-function rmse(t, y)
-	sqrt(1 / N * (t - y)'  * (t - y))
-end
-
 # ╔═╡ e5aa288c-4da3-11eb-0d6a-17ccbbc907ee
-rmse(t_va, y_va)
+Evaluation.rmse(t_va, y_va)
 
 # ╔═╡ 0b89afc8-4da4-11eb-14e6-4d62de20f275
 md"$\Delta v = c \frac{|z - z_\mathrm{VI}|}{1 + z_\mathrm{VI}}$"
 
-# ╔═╡ 05583b6a-4da4-11eb-2b67-e11eac0a33ae
-function compute_delta_v(z, z_vi)
-	# the speed of light in vacuum (km / s)
-	c = 299792.458
-	c .* abs.(z - z_vi) ./ (1 .+ z_vi)
-end
-
-# ╔═╡ 9e8d3812-4da4-11eb-0a57-dfba9dddc2b2
-function catastrophic_redshift_ratio(t, y)
-	sum(compute_delta_v(t, y) .> 3000) / length(t)
-end
-
 # ╔═╡ 2af527c4-4da5-11eb-114a-7fb9772594b3
-catastrophic_redshift_ratio(t_va, y_va)
+Evaluation.catastrophic_redshift_ratio(t_va, y_va)
 
 # ╔═╡ c1424a2e-4060-11eb-25f0-91259901fbfb
 md"## Bayesian Linear Regression
@@ -345,21 +334,21 @@ end
 y_va_bayes = Φ_va * m
 
 # ╔═╡ a1550f8e-4da9-11eb-27ef-f5d76d693e25
-rmse(t_va, y_va_bayes)
+Evaluation.rmse(t_va, y_va_bayes)
 
 # ╔═╡ 174a9e60-4da9-11eb-25ee-7f4d092a8e59
 y_va_std = sqrt.([1 / β + Φ_va[i, :]' * S * Φ_va[i, :] for i = 1:N_va])
 
 # ╔═╡ 5c3e572a-4da9-11eb-0270-2b848a6b2595
-histogram(y_va_std)
+histogram(y_va_std, legend=:none)
 
 # ╔═╡ d3e4554a-4da9-11eb-3975-b526831e612d
-catastrophic_redshift_ratio(t_va, y_va_bayes)
+Evaluation.catastrophic_redshift_ratio(t_va, y_va_bayes)
 
 # ╔═╡ be5f3988-4da9-11eb-06b2-5767b9f52edd
 begin
 	idx = y_va_std .< 1.001
-	sum(idx), catastrophic_redshift_ratio(t_va[idx], y_va_bayes[idx])
+	sum(idx), Evaluation.catastrophic_redshift_ratio(t_va[idx], y_va_bayes[idx])
 end
 
 # ╔═╡ Cell order:
@@ -382,11 +371,8 @@ end
 # ╠═5662d814-4da7-11eb-2796-21b20d8cec23
 # ╠═5aeffdbc-40ff-11eb-35dc-255d30226137
 # ╠═bdceb186-2e2f-11eb-0225-d7891641ec07
-# ╠═712df3d0-4da3-11eb-2160-6dcd45a1aa19
 # ╠═e5aa288c-4da3-11eb-0d6a-17ccbbc907ee
 # ╟─0b89afc8-4da4-11eb-14e6-4d62de20f275
-# ╠═05583b6a-4da4-11eb-2b67-e11eac0a33ae
-# ╠═9e8d3812-4da4-11eb-0a57-dfba9dddc2b2
 # ╠═2af527c4-4da5-11eb-114a-7fb9772594b3
 # ╟─c1424a2e-4060-11eb-25f0-91259901fbfb
 # ╟─c2c5fc70-4104-11eb-2f83-d11f8ecd277f
