@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.18
+# v0.12.19
 
 using Markdown
 using InteractiveUtils
@@ -103,11 +103,10 @@ function arrange_layer!(
 end
 
 # ╔═╡ 6531ac7e-3085-11eb-0633-a5bf7210fb85
-filenames = [
-	"data/sdss_dr14/7613/spec-7613-56988-0137.fits",
-	"data/sdss_dr14/1504/spec-1504-52940-0474.fits",
-	"data/sdss_dr14/7692/spec-7692-57064-0969.fits",
-	"data/sdss_dr14/8375/spec-8375-57520-0291.fits"]
+filenames = "data/DR16Q_Superset_v3/" .* [
+	"7613/spec-7613-56988-0137.fits",
+	"7692/spec-7692-57064-0969.fits",
+	"8375/spec-8375-57520-0291.fits"]
 
 # ╔═╡ dd519002-35fd-11eb-06a5-6fd483757583
 @bind filename Select(filenames)
