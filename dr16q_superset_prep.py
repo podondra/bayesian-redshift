@@ -31,7 +31,7 @@ with h5py.File("data/dr16q_superset.hdf5", "r+") as datafile:
     # (sizes almost according to ILSVRC)
     # seed from random.org
     rng = np.random.default_rng(seed=4)
-    n = ids.shape[0]
+    n = ids.shape[1]
     rnd_idx = rng.permutation(n)
     n_tr = n - N_VAL - N_TEST
     idx_tr = rnd_idx[:n_tr]
@@ -39,7 +39,7 @@ with h5py.File("data/dr16q_superset.hdf5", "r+") as datafile:
     idx_te = rnd_idx[n_tr + N_VAL:]
 
     for name, idx in [("tr", idx_tr), ("va", idx_va), ("te", idx_te)]:
-        datafile.create_dataset("id_" + name, data=ids[idx])
+        datafile.create_dataset("id_" + name, data=ids[:, idx])
         datafile.create_dataset("X_" + name, data=X[idx])
         datafile.create_dataset("z_" + name, data=z[idx])
         datafile.create_dataset("z_pipe_" + name, data=z_pipe[idx])

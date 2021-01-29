@@ -1,0 +1,11 @@
+#!/bin/bash
+#SBATCH --partition=cpufast --time=4:00:00
+#SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=1
+#SBATCH --mem=32G
+#SBATCH --job-name=dr16q_superset_prep --output=misc/dr16q_superset_prep.out
+
+module purge
+module load Python/3.7.2-fosscuda-2019a
+source venv/bin/activate
+
+srun python dr16q_superset_prep.py
