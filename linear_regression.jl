@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.19
+# v0.12.20
 
 using Markdown
 using InteractiveUtils
@@ -170,6 +170,7 @@ begin
 		scatter!(
 			[z2λ_obs(t_va[i], λ_emit)], [0],
 			marker=(:vline, :black), series_annotation=[text(line, 8, :top)])
+		# TODO what it is?
 		λ_error = z2λ_obs(σ_ml, λ_emit)
 		scatter!(
 			[z2λ_obs(y_va[i], λ_emit)], [0],

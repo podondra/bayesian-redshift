@@ -1,0 +1,18 @@
+#!/bin/bash
+#SBATCH --partition=gpufast --gres=gpu:1 --time=4:00:00
+#SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=1
+#SBATCH --mem=32G
+#SBATCH --job-name=pluto_gpufast --output=misc/pluto_gpufast.out
+
+# get tunneling info
+XDG_RUNTIME_DIR=""
+port=$(shuf -i8000-9999 -n1)
+node=$(hostname -i)
+user=$(whoami)
+# print tunneling instructions jupyter-log
+echo "ssh -AL ${port}:${node}:${port} ${user}@login.rci.cvut.cz"
+
+module purge
+module load Julia/1.5.1-linux-x86_64
+
+srun julia --project --eval "import Pluto; Pluto.run(host=\"${node}\", port=${port})"
