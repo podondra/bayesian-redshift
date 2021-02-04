@@ -1,0 +1,10 @@
+#!/bin/bash
+#SBATCH --partition=gpufast --gres=gpu:1 --time=4:00:00
+#SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=1
+#SBATCH --mem=32G
+#SBATCH --job-name=nn --output=misc/nn.out
+
+module purge
+module load Julia/1.5.1-linux-x86_64
+
+srun julia --project --eval "include(\"Neural.jl\"); import .Neural; @time Neural.train_wrapper!(Neural.nn(), \"nn.bson\");"
