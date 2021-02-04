@@ -6,7 +6,6 @@ using InteractiveUtils
 
 # ╔═╡ 90cd4814-6214-11eb-39bd-43e5f517eda8
 begin
-	using BSON: @load, @save
 	using CUDA
 	using Flux
 	using Flux.Data: DataLoader
@@ -20,105 +19,63 @@ end
 begin
     datafile = h5open("data/dr16q_superset.hdf5")
     X = read(datafile, "X_tr")
-    y = convert(Array{Float32}, read(datafile, "z_tr"))
+    y = Flux.unsqueeze(convert(Array{Float32}, read(datafile, "z_tr")), 1)
 	X_va = read(datafile, "X_va")
-    y_va = convert(Array{Float32}, read(datafile, "z_va"))
+    y_va = Flux.unsqueeze(convert(Array{Float32}, read(datafile, "z_va")), 1)
     close(datafile)
 end
 
+# ╔═╡ 21a9abc8-66bd-11eb-0f24-9f3dc6a10d78
+size(X), size(y), size(X_va), size(y_va)
+
+# ╔═╡ 232fd0da-66bd-11eb-31d1-433a72bfdfdd
+typeof(X), typeof(y), typeof(X_va), typeof(y_va)
+
 # ╔═╡ 35f4778a-6603-11eb-15ac-3bf999bb3241
 function predict(model, X)
-	predictions = Array{Float32}(undef, size(X, 2))
-	dataloader = DataLoader(X, batchsize=1024)
-	start = 1
-	for xb in dataloader
-		batchsize = size(xb, 2)
-		predictions[start:start + batchsize - 1] = model(gpu(xb))
-		start += batchsize
-	end
-	return predictions
+	loader = DataLoader(X, batchsize=2048)
+	reduce(hcat, [model(x) for x in loader])
 end
 
 # ╔═╡ f36cf690-65f7-11eb-087f-119bb1b29040
 function train_early_stopping!(
-		model, X, y, X_va, y_va, batchsize, patience, savepath)
-    dataloader = DataLoader((X, y), batchsize=batchsize, shuffle=true)
+		model, X_train, y_train, X_validation, y_validation,
+		batch_size, patience, device, file_model)
+    model = model |> device
+	X_train, y_train = X_train |> device, y_train |> device
+	X_validation, y_validation = X_validation |> device, y_validation |> device
 
-    model = gpu(model)
+	loader_train = DataLoader(
+		(X_train, y_train), batchsize=batch_size, shuffle=true)
 
     loss(x, y) = mse(model(x), y)
-	losses, losses_va = Float32[], Float32[]
+	losses_train, losses_validation = Float32[], Float32[]
 
     # TODO weight decay
-    opt = ADAM()
-    ps = params(model)
+    optimizer = ADAM()
+    Θ = params(model)
 
     epoch = 1
-    v_star = typemax(Float32)
+    loss_validation_star = typemax(Float32)
 	i = 0
+	model_best = deepcopy(model)
     while i < patience
-		trainmode!(model)
-        for (xb, yb) in dataloader
-            xb, yb = gpu(xb), gpu(yb)
-            gs = gradient(ps) do
-                loss(xb, yb)
-            end
-            update!(opt, ps, gs)
-        end
+        Flux.train!(loss, Θ, loader_train, optimizer)
         epoch += 1
 
-		testmode!(model)
-        v = mse(predict(model, X_va), y_va)
-        if v < v_star
+        loss_validation = mse(predict(model, X_validation), y_validation)
+        if loss_validation < loss_validation_star
             i = 0
-            v_star = v
-			let model = cpu(model)
-            	@save savepath model
-			end
+            loss_validation_star = loss_validation
+			model_best = deepcopy(model)
         else
             i += 1
         end
-		push!(losses_va, v)
-        push!(losses, mse(predict(model, X), y))
+		push!(losses_validation, loss_validation)
+        push!(losses_train, mse(predict(model, X_train), y_train))
     end
-	
-	return losses, losses_va
-end
 
-# ╔═╡ 75a18a6a-6614-11eb-17c0-3d1ba4291412
-function train_epochs!(model, X, y, X_va, y_va, batchsize, epochs)
-    dataloader = DataLoader((X, y), batchsize=batchsize, shuffle=true)
-	dataloader_va = DataLoader((X_va, y_va), batchsize=1024)
-	
-	model = gpu(model)
-	
-	loss(x, y) = mse(model(x), y)
-	losses, losses_va = Float32[], Float32[]
-	
-	opt = ADAM()
-	ps = Flux.params(model)
-	
-	for epoch in 1:epochs
-		for (xb, yb) in dataloader
-			xb, yb = gpu(xb), gpu(yb)
-			
-			gs = Flux.gradient(ps) do
-				loss(xb, yb)
-			end
-			
-			update!(opt, ps, gs)
-		end
-		
-		validation_loss = 0f0
-		for (xb, yb) in dataloader_va
-			xb, yb = gpu(xb), gpu(yb)
-			validation_loss += loss(xb, yb)
-		end
-		validation_loss /= length(dataloader_va)
-		push!(losses_va, validation_loss)
-	end
-	
-	return losses, losses_va
+	return model_best, losses_train, losses_validation
 end
 
 # ╔═╡ 3088ae56-6608-11eb-3a7b-3b10bbce7f18
@@ -130,16 +87,18 @@ begin
 		Dropout(0.5), 
 		Dense(128, 1))
 
-	losses, losses_va = train_epochs!(nn, X, y, X_va, y_va, 128, 32)
-	
-	plot(losses, label="training loss")
-	plot!(losses_va, label="validation loss")
+	nn_trained, losses_train, losses_valiation = train_early_stopping!(
+		nn, X, y, X_va, y_va, 128, 16, gpu, "nn.bson")
+
+	plot(losses_train, label="training loss")
+	plot!(losses_valiation, label="validation loss")
 end
 
 # ╔═╡ Cell order:
 # ╠═90cd4814-6214-11eb-39bd-43e5f517eda8
 # ╠═a4926ece-65f7-11eb-026d-b1c374bba55c
+# ╠═21a9abc8-66bd-11eb-0f24-9f3dc6a10d78
+# ╠═232fd0da-66bd-11eb-31d1-433a72bfdfdd
 # ╠═35f4778a-6603-11eb-15ac-3bf999bb3241
 # ╠═f36cf690-65f7-11eb-087f-119bb1b29040
-# ╠═75a18a6a-6614-11eb-17c0-3d1ba4291412
 # ╠═3088ae56-6608-11eb-3a7b-3b10bbce7f18
