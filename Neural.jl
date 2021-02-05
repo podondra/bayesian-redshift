@@ -1,6 +1,6 @@
 module Neural
 
-using BSON: @save
+using BSON: bson
 using CUDA
 using Flux
 using Flux.Data: DataLoader
@@ -86,7 +86,7 @@ function train_with_early_stopping!(
         if loss_validation < loss_validation_star
             i = 0
             loss_validation_star = loss_validation
-            @save file_model model
+            bson(file_model, model=cpu(model))
         else
             i += 1
         end

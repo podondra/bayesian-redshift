@@ -3,6 +3,7 @@
 #SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=1
 #SBATCH --mem=32G
 #SBATCH --job-name=vgg11 --output=misc/vgg11.out
+#SBATCH --mail-user=podszond@fit.cvut.cz --mail-type=ALL
 
 module purge
 module load Julia/1.5.1-linux-x86_64
