@@ -72,7 +72,7 @@ While it is reasonable to omit batch normalization from the very first baseline,
     - ~~as classification (catastrophic redshift, see DR16Q paper)~~
 3. experiments
     - ~~linear regression~~
-    - ~~Bayesian linear regression~~
+    - Bayesian linear regression
     - ~~fully-connected network~~
     - Bayesian neural network
     - ~~fully-connected network with dropout to get uncertainty (see Gal)~~

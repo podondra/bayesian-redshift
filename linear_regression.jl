@@ -16,7 +16,7 @@ end
 # ╔═╡ 58951756-2d80-11eb-16e5-73b4b46539b1
 begin
 	using HDF5, LinearAlgebra, Plots
-	include("evaluation.jl")
+	include("Evaluation.jl")
 	import .Evaluation
 end
 
