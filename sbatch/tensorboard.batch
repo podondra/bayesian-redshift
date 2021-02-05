@@ -1,0 +1,18 @@
+#!/bin/bash
+#SBATCH --partition=cpufast --time=4:00:00
+#SBATCH --nodes=1 --ntasks=1 --cpus-per-task=1
+#SBATCH --job-name=tensorboad --output=misc/tensorboard.out
+
+# get tunneling info
+port=$(shuf -i8000-9999 -n1)
+node=$(hostname -s)
+user=$(whoami)
+
+# print tunneling instructions jupyter-log
+echo "ssh -NL ${port}:${node}:${port} ${user}@login.rci.cvut.cz"
+
+module purge
+module load Python/3.7.2-fosscuda-2019a
+source venv/bin/activate
+
+srun tensorboard --logdir runs --port=${port} --host=${node}
