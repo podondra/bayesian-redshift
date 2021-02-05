@@ -47,15 +47,16 @@ end
 function get_data()
     datafile = h5open("data/dr16q_superset.hdf5")
     X_train = read(datafile, "X_tr")
-    y_train = Flux.unsqueeze(convert(Array{Float32}, read(datafile, "z_tr")), 1)
+    y_train = convert(Array{Float32}, read(datafile, "z_tr"))
     X_validation = read(datafile, "X_va")
-    y_validation = Flux.unsqueeze(convert(Array{Float32}, read(datafile, "z_va")), 1)
+    y_validation = convert(Array{Float32}, read(datafile, "z_va"))
     close(datafile)
     return X_train, y_train, X_validation, y_validation
 end
 
 function predict(model, X)
-    reduce(hcat, [model(x) for x in DataLoader(X, batchsize=2048)])
+    loader = DataLoader(X, batchsize=2048)
+    reduce(vcat, [dropdims(model(x), dims=1) for x in loader])
 end
 
 function train_with_early_stopping!(
@@ -68,7 +69,7 @@ function train_with_early_stopping!(
     loader_train = DataLoader(
         (X_train, y_train), batchsize=batchsize, shuffle=true)
 
-    loss(x, y) = mse(model(x), y)
+    loss(x, y) = mse(dropdims(model(x), dims=1), y)
 
     # TODO weight decay
     optimizer = ADAM()
