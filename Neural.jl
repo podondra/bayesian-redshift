@@ -20,6 +20,30 @@ function nn()
         Dense(128, 1))
 end
 
+function vgg11()
+    Chain(
+        Flux.unsqueeze(2),
+        Conv((3, ), 1 => 64, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 64 => 128, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 128 => 256, relu, pad=1),
+        Conv((3, ), 256 => 256, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 256 => 512, relu, pad=1),
+        Conv((3, ), 512 => 512, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 512 => 512, relu, pad=1),
+        Conv((3, ), 512 => 512, relu, pad=1),
+        MaxPool((2, )),
+        flatten,
+        Dense(16 * 512, 4096, relu),
+        Dropout(0.5),
+        Dense(4096, 4096, relu),
+        Dropout(0.5),
+        Dense(4096, 1))
+end
+
 function get_data()
     datafile = h5open("data/dr16q_superset.hdf5")
     X_train = read(datafile, "X_tr")
@@ -75,7 +99,7 @@ function train_wrapper!(model, name_model)
     X_train, y_train, X_validation, y_validation = get_data()
     with_logger(logger) do
         train_with_early_stopping!(
-            model, get_data()..., batchsize=128, patience=16, device=gpu,
+            model, get_data()..., batchsize=256, patience=64, device=gpu,
             file_model=name_model * ".bson")
     end
 end
