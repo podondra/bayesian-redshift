@@ -1,9 +1,10 @@
-using DLSMethod, FITSIO, HDF5, LinearAlgebra, Printf, Statistics
-
-function get_filepath(plate, mjd, fiberid)
-    @sprintf("data/DR16Q_Superset_v3/%04d/spec-%04d-%05d-%04d.fits",
-             plate, plate, mjd, fiberid)
-end
+using DLSMethod
+using FITSIO
+using HDF5
+using LinearAlgebra
+using Statistics
+include("Utils.jl")
+import .Utils
 
 function polynomial_features(x::Vector{Float32}, degree::Int64)::Matrix{Float64}
     X = Matrix{Float64}(undef, length(x), degree + 1)
@@ -21,11 +22,7 @@ end
     fluxes = Matrix{Float32}(undef, 3826, n)
 
     Threads.@threads for i = 1:n
-        plate, mjd, fiberid = id[i, :]
-        hdulist = FITS(get_filepath(plate, mjd, fiberid))
-        flux = read(hdulist[2], "flux")
-        loglam = read(hdulist[2], "loglam")
-        close(hdulist)
+        loglam, flux = Utils.get_spectrum(id[i, :]...)
 
         # standardise flux
         flux_mean = mean(flux)

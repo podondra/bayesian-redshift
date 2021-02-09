@@ -1,4 +1,5 @@
 module Evaluation
+
 export rmse, catastrophic_redshift_ratio
 
 function rmse(t, y)
@@ -11,7 +12,8 @@ function compute_delta_v(z, z_vi)
     c .* abs.(z - z_vi) ./ (1 .+ z_vi)
 end
 
-function catastrophic_redshift_ratio(t, y)
-    sum(compute_delta_v(t, y) .> 3000) / length(t)
+function catastrophic_redshift_ratio(t, y; threshold=3000)
+    sum(compute_delta_v(t, y) .> threshold) / length(t)
 end
+
 end # module

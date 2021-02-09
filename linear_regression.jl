@@ -15,9 +15,11 @@ end
 
 # ╔═╡ 58951756-2d80-11eb-16e5-73b4b46539b1
 begin
-	using HDF5, LinearAlgebra, Plots
-	include("Evaluation.jl")
-	import .Evaluation
+	using HDF5
+	using LinearAlgebra
+	using Plots
+	include("Evaluation.jl"); import .Evaluation
+	include("Utils.jl"); import .Utils
 end
 
 # ╔═╡ f7494ac2-410b-11eb-23f5-a5e328c708ed
@@ -133,50 +135,18 @@ and so we see that the inverse of the noise precision is given by the residual v
 # ╔═╡ 0e6e5b3c-405f-11eb-31a0-15f78cb09cfc
 σ_ml = sqrt(σ²_ml)
 
-# ╔═╡ 62077140-40fd-11eb-0c68-07fa7eed9338
-function z2λ_obs(z, λ_emit)
-	(1 + z) * λ_emit
-end
-
-# ╔═╡ c2898ec2-40fd-11eb-3edc-5d85d0ecb157
-# http://classic.sdss.org/dr6/algorithms/linestable.html
-spectral_lines = Dict(
-	"Lyα" => 1215.24,
-	"C IV" => 1549.48,
-	"C III" => 1908.734,
-	"Mg II" => 2799.117,
-	"O III" => 1665.85,
-	"Hα" => 6564.61)
-
 # ╔═╡ 44665762-4da7-11eb-3142-d5b022bfbb32
 Φ_va = [ones(Float32, N_va) X_va]
 
 # ╔═╡ 5662d814-4da7-11eb-2796-21b20d8cec23
 y_va = Φ_va * w_ml
 
-# ╔═╡ 5aeffdbc-40ff-11eb-35dc-255d30226137
-i = rand(1:N_va)
-
-# ╔═╡ bdceb186-2e2f-11eb-0225-d7891641ec07
+# ╔═╡ e6ddadda-6abf-11eb-3713-c3b77ff03a1d
 begin
-	EPS = 0.0005
-	LOGLAMMIN, LOGLAMMAX = 3.5812 + EPS, 3.9637 - EPS
-	N_FEATURES = 512
-	wave = 10 .^ range(LOGLAMMIN, LOGLAMMAX, length=N_FEATURES)
-	foo = plot(
-		wave, X_va[i, :], xlim=(wave[1], wave[end]),
-		legend=:none, xlabel="wavelength (Angstroms)")
-	for (line, λ_emit) in pairs(spectral_lines)
-		scatter!(
-			[z2λ_obs(t_va[i], λ_emit)], [0],
-			marker=(:vline, :black), series_annotation=[text(line, 8, :top)])
-		# TODO what it is?
-		λ_error = z2λ_obs(σ_ml, λ_emit)
-		scatter!(
-			[z2λ_obs(y_va[i], λ_emit)], [0],
-			marker=(:vline, :red), series_annotation=[text(line, 8, :bottom)])
-	end
-	foo
+	i = rand(1:N_va)
+	Utils.plot_spectrum(X_va[i, :])
+	Utils.plot_spectral_lines!(t_va[i])
+	Utils.plot_spectral_lines!(y_va[i], color=:red, location=:bottom)
 end
 
 # ╔═╡ e5aa288c-4da3-11eb-0d6a-17ccbbc907ee
@@ -366,12 +336,9 @@ end
 # ╟─70a584aa-405d-11eb-0f58-f7c68ee0f7d4
 # ╠═2feba2f2-405e-11eb-3b49-7bf26d78ddb9
 # ╠═0e6e5b3c-405f-11eb-31a0-15f78cb09cfc
-# ╠═62077140-40fd-11eb-0c68-07fa7eed9338
-# ╠═c2898ec2-40fd-11eb-3edc-5d85d0ecb157
 # ╠═44665762-4da7-11eb-3142-d5b022bfbb32
 # ╠═5662d814-4da7-11eb-2796-21b20d8cec23
-# ╠═5aeffdbc-40ff-11eb-35dc-255d30226137
-# ╠═bdceb186-2e2f-11eb-0225-d7891641ec07
+# ╠═e6ddadda-6abf-11eb-3713-c3b77ff03a1d
 # ╠═e5aa288c-4da3-11eb-0d6a-17ccbbc907ee
 # ╟─0b89afc8-4da4-11eb-14e6-4d62de20f275
 # ╠═2af527c4-4da5-11eb-114a-7fb9772594b3
