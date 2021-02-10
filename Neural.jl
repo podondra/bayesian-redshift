@@ -5,6 +5,7 @@ using CUDA
 using Flux
 using Flux.Data: DataLoader
 using Flux.Losses: mse
+using Flux.Optimise
 using HDF5
 using Logging
 using TensorBoardLogger
@@ -13,11 +14,15 @@ export train_wrapper!, nn
 
 function nn()
     Chain(
-        Dense(512, 256, relu),
+        Dense(512, 512, relu),
         Dropout(0.5),
-        Dense(256, 128, relu),
+        Dense(512, 512, relu),
         Dropout(0.5),
-        Dense(128, 1))
+        Dense(512, 512, relu),
+        Dropout(0.5),
+        Dense(512, 512, relu),
+        Dropout(0.5),
+        Dense(512, 1))
 end
 
 function vgg11()
@@ -61,7 +66,7 @@ end
 
 function train_with_early_stopping!(
         model, X_train, y_train, X_validation, y_validation;
-        batchsize, patience, device, file_model)
+        batchsize, patience, weight_decay, device, file_model)
     model = model |> device
     X_train, y_train = X_train |> device, y_train |> device
     X_validation, y_validation = X_validation |> device, y_validation |> device
@@ -71,8 +76,7 @@ function train_with_early_stopping!(
 
     loss(x, y) = mse(dropdims(model(x), dims=1), y)
 
-    # TODO weight decay
-    optimizer = ADAM()
+    optimizer = Optimiser(WeightDecay(weight_decay), ADAM())
     Θ = params(model)
 
     epoch = 1
@@ -100,8 +104,10 @@ function train_wrapper!(model, name_model)
     X_train, y_train, X_validation, y_validation = get_data()
     with_logger(logger) do
         train_with_early_stopping!(
-            model, get_data()..., batchsize=256, patience=64, device=gpu,
-            file_model=name_model * ".bson")
+            model, get_data()...,
+            batchsize=256, patience=64, weight_decay=1e-3,
+            device=gpu, file_model="models/" * name_model * ".bson")
     end
 end
+
 end # module
