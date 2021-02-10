@@ -75,7 +75,7 @@ Evaluation.catastrophic_redshift_ratio(y, ŷ_vgg11, threshold=6000)
 # ╔═╡ 1d52576a-6abb-11eb-2dd8-c388b2365ddd
 begin
 	rnd_i = rand(1:size(id, 1))
-	loglam, flux = Utils.get_spectrum(id[rnd_i, :]...)
+	loglam, flux = Utils.get_spectrum(id[:, rnd_i]...)
 	plot(10 .^ loglam, flux)
 	Utils.plot_spectral_lines!(y[rnd_i])
 	Utils.plot_spectral_lines!(ŷ_vgg11[rnd_i], color=:red, location=:bottom)

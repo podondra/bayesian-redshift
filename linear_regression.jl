@@ -76,9 +76,9 @@ $p(\mathsf{t} | \mathbf{X}, \mathbf{w}, \beta) = \prod \mathcal{N}(t_n | \mathbf
 begin
 	fid = h5open("data/dr16q_superset.hdf5", mode="r")
 	X = read(fid["X_tr"])'
-	t = convert.(Float32, read(fid["z_tr"]))
+	t = read(fid["z_tr"])
 	X_va = read(fid["X_va"])'
-	t_va = convert.(Float32, read(fid["z_va"]))
+	t_va = read(fid["z_va"])
 	N = size(X, 1)
 	N_va = size(X_va, 1)
 	close(fid)
@@ -294,7 +294,7 @@ md"Note that, if both $\mathbf{w}$ and $\beta$ are treated as unknown, then we c
 
 # ╔═╡ e1f04b28-4da7-11eb-179b-7bc8a5391136
 begin
-	# TODO introduce a conjugate prior ditribution p(w, β)
+	# TODO introduce a conjugate prior distribution p(w, β)
 	β = 1.0
 	α = 2.0
 	S = inv(α * I + β * Φ' * Φ)

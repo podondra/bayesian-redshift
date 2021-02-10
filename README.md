@@ -18,12 +18,13 @@ Goal should be to minimize the ration on catasthropic redshift. (Lyke et al., 20
 
 Method | Catastrophic Redshift Ratio | Root-Mean-Square Error
 ------ | --------------------------- | ----------------------
-Linear Regression | 0.96330 | 0.701947
-Bayesian Linear Regression | 0.96334 | 0.701947
-Fully-Connected Neural Network | 0.12796 | 0.209840
-`Z_PIPE` | 0.08174 | 0.610463
-`Z_QN` | 0.13182 | 0.708504
-`Z_PCA` | 0.01594 | 0.045381
+`Z_PCA`                        | 0.01538 | 0.032769
+VGG Net-A                      | 0.20882 | 0.072266
+Fully-Connected Neural Network | 0.54772 | 0.193327
+`Z_PIPE`                       | 0.09036 | 0.649342
+Linear Regression              | 0.96170 | 0.701032
+Bayesian Linear Regression     | 0.96176 | 0.701032
+`Z_QN`                         | 0.13772 | 0.722877
 
 "Determine your goals—what error metric to use, and your target value for this error metric.
 These goals and error metrics should be drive by the problem that the applicatoin is intended to solve." (Goodfellow et al., 2016, p. 416)
