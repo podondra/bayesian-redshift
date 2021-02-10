@@ -17,12 +17,12 @@ end
 @time begin
     fid = h5open("data/dr16q_superset.hdf5", "r+")
     id = read(fid["id"])
-    n = size(id, 1)
+    n = size(id, 2)
 
     fluxes = Matrix{Float32}(undef, 3826, n)
 
     Threads.@threads for i = 1:n
-        loglam, flux = Utils.get_spectrum(id[i, :]...)
+        loglam, flux = Utils.get_spectrum(id[:, i]...)
 
         # standardise flux
         flux_mean = mean(flux)
