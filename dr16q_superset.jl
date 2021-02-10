@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.19
+# v0.12.20
 
 using Markdown
 using InteractiveUtils
@@ -91,7 +91,7 @@ end
 
 # ╔═╡ 6f90500a-6148-11eb-2645-61e9174bf9bd
 begin
-	wave_idx = (wave_subset[:wavemin] .< wavemin) .& (wave_subset[:wavemax] .> wavemax)
+	wave_idx = (wave_subset[:wavemin] .<= wavemin) .& (wave_subset[:wavemax] .>= wavemax)
 	sum(wave_idx)
 end
 
@@ -136,16 +136,24 @@ end
 # ╔═╡ c66ea292-614c-11eb-2bc7-675d0b185c03
 md"## HDF5"
 
+# ╔═╡ 1881c878-6b6d-11eb-2f91-e984e48285cc
+begin
+	id = Matrix{Int32}(undef, 3, size(final_subset, 1))
+	id[1, :] = final_subset[:plate]
+	id[2, :] = final_subset[:mjd]
+	id[3, :] = final_subset[:fiberid]
+	id
+end
+
 # ╔═╡ d89f83d6-614d-11eb-170b-e1a7febab65e
 begin
 	# read-write, create file if not existing, preserve existing contents
 	fid = h5open("data/dr16q_superset.hdf5", "cw")
-	id = Matrix(final_subset[[:plate, :mjd, :fiberid]])
 	write_dataset(fid, "id", id)
-	write_dataset(fid, "z", final_subset[:z])
-	write_dataset(fid, "z_pipe", final_subset[:z_pipe])
-	write_dataset(fid, "z_pca", final_subset[:z_pca])
-	write_dataset(fid, "z_qn", final_subset[:z_qn])
+	write_dataset(fid, "z", convert(Vector{Float32}, final_subset[:z]))
+	write_dataset(fid, "z_pipe", convert(Vector{Float32}, final_subset[:z_pipe]))
+	write_dataset(fid, "z_pca", convert(Vector{Float32}, final_subset[:z_pca]))
+	write_dataset(fid, "z_qn", convert(Vector{Float32}, final_subset[:z_qn]))
 	close(fid)
 end
 
@@ -173,4 +181,5 @@ end
 # ╟─51962842-614b-11eb-20a7-434c8d7421ea
 # ╠═5a0160dc-614b-11eb-261c-5f67462a042d
 # ╟─c66ea292-614c-11eb-2bc7-675d0b185c03
+# ╠═1881c878-6b6d-11eb-2f91-e984e48285cc
 # ╠═d89f83d6-614d-11eb-170b-e1a7febab65e
