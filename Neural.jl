@@ -25,6 +25,25 @@ function nn()
         Dense(512, 1))
 end
 
+function zfnet()
+    Chain(
+        Flux.unsqueeze(2),
+        Conv((7, ), 1 => 96, relu, pad=1, stride=2),
+        MaxPool((3, ), pad=1, stride=2),
+        Conv((5, ), 96 => 256, relu, stride=2),
+        MaxPool((3, ), pad=1, stride=2),
+        Conv((3, ), 256 => 384, relu, pad=1),
+        Conv((3, ), 384 => 384, relu, pad=1),
+        Conv((3, ), 384 => 256, relu, pad=1),
+        MaxPool((3, ), stride=2),
+        flatten,
+        Dense(15 * 256, 4096, relu),
+        Dropout(0.5),
+        Dense(4096, 4096, relu),
+        Dropout(0.5),
+        Dense(4096, 1))
+end
+
 function vgg11()
     Chain(
         Flux.unsqueeze(2),
