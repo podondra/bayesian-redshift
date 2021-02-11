@@ -68,6 +68,72 @@ function vgg11()
         Dense(4096, 1))
 end
 
+function vgg16()
+    Chain(
+        Flux.unsqueeze(2),
+        Conv((3, ), 1 => 64, relu, pad=1),
+        Conv((3, ), 64 => 64, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 64 => 128, relu, pad=1),
+        Conv((3, ), 128 => 128, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 128 => 256, relu, pad=1),
+        Conv((3, ), 256 => 256, relu, pad=1),
+        Conv((3, ), 256 => 256, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 256 => 512, relu, pad=1),
+        Conv((3, ), 512 => 512, relu, pad=1),
+        Conv((3, ), 512 => 512, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 512 => 512, relu, pad=1),
+        Conv((3, ), 512 => 512, relu, pad=1),
+        Conv((3, ), 512 => 512, relu, pad=1),
+        MaxPool((2, )),
+        flatten,
+        Dense(16 * 512, 4096, relu),
+        Dropout(0.5),
+        Dense(4096, 4096, relu),
+        Dropout(0.5),
+        Dense(4096, 1))
+end
+
+function yolo()
+    Chain(
+        Flux.unsqueeze(2),
+        Conv((7, ), 1 => 64, activation, stride=2, pad=SamePad()),
+        MeanPool((2, )),
+        Conv((3, ), 64 => 192, activation, pad=SamePad()),
+        MeanPool((2, )),
+        Conv((1, ), 192 => 128, activation),
+        Conv((3, ), 128 => 256, activation, pad=SamePad()),
+        Conv((1, ), 256 => 256, activation),
+        Conv((3, ), 256 => 512, activation, pad=SamePad()),
+        MeanPool((2, )),
+        Conv((1, ), 512 => 256, activation, pad=SamePad()),
+        Conv((3, ), 256 => 512, activation, pad=SamePad()),
+        Conv((1, ), 512 => 256, activation),
+        Conv((3, ), 256 => 512, activation, pad=SamePad()),
+        Conv((1, ), 512 => 256, activation),
+        Conv((3, ), 256 => 512, activation, pad=SamePad()),
+        Conv((1, ), 512 => 256, activation),
+        Conv((3, ), 256 => 512, activation, pad=SamePad()),
+        Conv((1, ), 512 => 512, activation),
+        Conv((3, ), 512 => 1024, activation, pad=SamePad()),
+        MeanPool((2, )),
+        Conv((1, ), 1024 => 512, activation),
+        Conv((3, ), 512 => 1024, activation, pad=SamePad()),
+        Conv((1, ), 1024 => 512, activation),
+        Conv((3, ), 512 => 1024, activation, pad=SamePad()),
+        Conv((3, ), 1024 => 1024, activation, pad=SamePad()),
+        Conv((3, ), 1024 => 1024, activation, stride=2, pad=SamePad()),
+        Conv((3, ), 1024 => 1024, activation, pad=SamePad()),
+        Conv((3, ), 1024 => 1024, activation, pad=SamePad()),
+        flatten,
+        Dense(8 * 1024, 4096),
+        Dropout(0.5),
+        Dense(4096, 1))
+end
+
 function get_data()
     datafile = h5open("data/dr16q_superset.hdf5")
     X_train = read(datafile, "X_tr")
