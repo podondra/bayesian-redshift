@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=gpufast --gres=gpu:1 --time=4:00:00
+#SBATCH --partition=gpu --gres=gpu:1 --time=24:00:00
 #SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=1
 #SBATCH --mem=32G
 #SBATCH --job-name=vgg16 --output=misc/vgg16.out

@@ -19,7 +19,9 @@ Goal should be to minimize the ration on catasthropic redshift. (Lyke et al., 20
 Method | Catastrophic Redshift Ratio | Root-Mean-Square Error
 ------ | --------------------------- | ----------------------
 `Z_PCA`                        | 0.01538 | 0.032769
-VGG Net-A                      | 0.20882 | 0.072266
+ZFNet                          | 0.43328 | 0.149261
+VGG11                          | 0.37538 | 0.151978
+VGG16                          | 0.48056 | 0.160014
 Fully-Connected Neural Network | 0.54772 | 0.193327
 `Z_PIPE`                       | 0.09036 | 0.649342
 Linear Regression              | 0.96170 | 0.701032

@@ -8,6 +8,7 @@ using Flux.Losses: mse
 using Flux.Optimise
 using HDF5
 using Logging
+using NNlib
 using TensorBoardLogger
 
 export train_wrapper!, nn
@@ -98,38 +99,39 @@ function vgg16()
 end
 
 function yolo()
+    leakyrelu(x) = max.(0.1 * x, x)
     Chain(
         Flux.unsqueeze(2),
-        Conv((7, ), 1 => 64, activation, stride=2, pad=SamePad()),
+        Conv((7, ), 1 => 64, leakyrelu, stride=2, pad=SamePad()),
         MeanPool((2, )),
-        Conv((3, ), 64 => 192, activation, pad=SamePad()),
+        Conv((3, ), 64 => 192, leakyrelu, pad=SamePad()),
         MeanPool((2, )),
-        Conv((1, ), 192 => 128, activation),
-        Conv((3, ), 128 => 256, activation, pad=SamePad()),
-        Conv((1, ), 256 => 256, activation),
-        Conv((3, ), 256 => 512, activation, pad=SamePad()),
+        Conv((1, ), 192 => 128, leakyrelu),
+        Conv((3, ), 128 => 256, leakyrelu, pad=SamePad()),
+        Conv((1, ), 256 => 256, leakyrelu),
+        Conv((3, ), 256 => 512, leakyrelu, pad=SamePad()),
         MeanPool((2, )),
-        Conv((1, ), 512 => 256, activation, pad=SamePad()),
-        Conv((3, ), 256 => 512, activation, pad=SamePad()),
-        Conv((1, ), 512 => 256, activation),
-        Conv((3, ), 256 => 512, activation, pad=SamePad()),
-        Conv((1, ), 512 => 256, activation),
-        Conv((3, ), 256 => 512, activation, pad=SamePad()),
-        Conv((1, ), 512 => 256, activation),
-        Conv((3, ), 256 => 512, activation, pad=SamePad()),
-        Conv((1, ), 512 => 512, activation),
-        Conv((3, ), 512 => 1024, activation, pad=SamePad()),
+        Conv((1, ), 512 => 256, leakyrelu, pad=SamePad()),
+        Conv((3, ), 256 => 512, leakyrelu, pad=SamePad()),
+        Conv((1, ), 512 => 256, leakyrelu),
+        Conv((3, ), 256 => 512, leakyrelu, pad=SamePad()),
+        Conv((1, ), 512 => 256, leakyrelu),
+        Conv((3, ), 256 => 512, leakyrelu, pad=SamePad()),
+        Conv((1, ), 512 => 256, leakyrelu),
+        Conv((3, ), 256 => 512, leakyrelu, pad=SamePad()),
+        Conv((1, ), 512 => 512, leakyrelu),
+        Conv((3, ), 512 => 1024, leakyrelu, pad=SamePad()),
         MeanPool((2, )),
-        Conv((1, ), 1024 => 512, activation),
-        Conv((3, ), 512 => 1024, activation, pad=SamePad()),
-        Conv((1, ), 1024 => 512, activation),
-        Conv((3, ), 512 => 1024, activation, pad=SamePad()),
-        Conv((3, ), 1024 => 1024, activation, pad=SamePad()),
-        Conv((3, ), 1024 => 1024, activation, stride=2, pad=SamePad()),
-        Conv((3, ), 1024 => 1024, activation, pad=SamePad()),
-        Conv((3, ), 1024 => 1024, activation, pad=SamePad()),
+        Conv((1, ), 1024 => 512, leakyrelu),
+        Conv((3, ), 512 => 1024, leakyrelu, pad=SamePad()),
+        Conv((1, ), 1024 => 512, leakyrelu),
+        Conv((3, ), 512 => 1024, leakyrelu, pad=SamePad()),
+        Conv((3, ), 1024 => 1024, leakyrelu, pad=SamePad()),
+        Conv((3, ), 1024 => 1024, leakyrelu, stride=2, pad=SamePad()),
+        Conv((3, ), 1024 => 1024, leakyrelu, pad=SamePad()),
+        Conv((3, ), 1024 => 1024, leakyrelu, pad=SamePad()),
         flatten,
-        Dense(8 * 1024, 4096),
+        Dense(8 * 1024, 4096, leakyrelu),
         Dropout(0.5),
         Dense(4096, 1))
 end

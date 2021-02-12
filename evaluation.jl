@@ -21,6 +21,9 @@ end
 # ╔═╡ ed4d438e-6aaa-11eb-051e-efe644cce631
 md"# Evaluation"
 
+# ╔═╡ 1f0e81de-6d04-11eb-2d25-97f57a2a305c
+import Pkg; Pkg.add("StatsPlots")
+
 # ╔═╡ 8643602a-66e9-11eb-3700-374047551428
 begin
 	datafile = h5open("data/dr16q_superset.hdf5")
@@ -35,9 +38,10 @@ end
 begin
 	Core.eval(Main, :(import Flux, NNlib))
 	nn = BSON.load("models/nn.bson")[:model] |> gpu
+	zfnet = BSON.load("models/zfnet.bson")[:model] |> gpu
 	vgg11 = BSON.load("models/vgg11.bson")[:model] |> gpu
-	nn, vgg11
-end
+	vgg16 = BSON.load("models/vgg16.bson")[:model] |> gpu
+end;
 
 # ╔═╡ f614d7c0-6aaa-11eb-1c62-73c54a75a0ab
 md"## Fully-Connected Neural Network"
@@ -46,10 +50,7 @@ md"## Fully-Connected Neural Network"
 ŷ_nn = Neural.predict(nn, X) |> cpu
 
 # ╔═╡ 06de9ac0-679d-11eb-17d8-6f5359328d71
-Evaluation.rmse(y, ŷ_nn)
-
-# ╔═╡ 67e19e7e-679f-11eb-0eb1-c39fc5eac3ed
-Evaluation.catastrophic_redshift_ratio(y, ŷ_nn)
+Evaluation.rmse(y, ŷ_nn), Evaluation.catastrophic_redshift_ratio(y, ŷ_nn)
 
 # ╔═╡ 33c2836a-6aab-11eb-1c93-257ed54b0585
 begin
@@ -60,31 +61,58 @@ end
 # ╔═╡ 0348b7e0-6aab-11eb-16ba-d574e6296961
 md"## Convolutional Neural Network"
 
-# ╔═╡ 7b0e34c6-67ba-11eb-2500-378603362df8
-ŷ_vgg11 = Neural.predict(vgg11, X) |> cpu
+# ╔═╡ b8819d20-6c4a-11eb-2bad-e95ec5a69145
+md"### ZFNet"
 
-# ╔═╡ 89f370c6-67ba-11eb-24da-2b0a0f0ad532
-Evaluation.rmse(y, ŷ_vgg11)
+# ╔═╡ 96ff45dc-6c4a-11eb-3a22-550fb0ec4d22
+begin
+	ŷ_zfnet = Neural.predict(zfnet, X) |> cpu
+	Evaluation.rmse(y, ŷ_zfnet), Evaluation.catastrophic_redshift_ratio(y, ŷ_zfnet)
+end
 
-# ╔═╡ 98d6ed82-6ac3-11eb-0851-89add7ad3b38
-Evaluation.catastrophic_redshift_ratio(y, ŷ_vgg11)
-
-# ╔═╡ 8d836ffc-67ba-11eb-0d82-f70af20aeeae
-Evaluation.catastrophic_redshift_ratio(y, ŷ_vgg11, threshold=6000)
+# ╔═╡ 8c0247fa-6c4b-11eb-1133-c5ca6a10f74c
+begin
+	density(y, label="Validation Set", xlabel="z", ylabel="Density")
+	density!(ŷ_zfnet, label="ZFNet Predictions")
+end
 
 # ╔═╡ 1d52576a-6abb-11eb-2dd8-c388b2365ddd
 begin
-	rnd_i = rand(1:size(id, 1))
+	rnd_i = rand(1:size(id, 2))
 	loglam, flux = Utils.get_spectrum(id[:, rnd_i]...)
 	plot(10 .^ loglam, flux)
 	Utils.plot_spectral_lines!(y[rnd_i])
-	Utils.plot_spectral_lines!(ŷ_vgg11[rnd_i], color=:red, location=:bottom)
+	Utils.plot_spectral_lines!(ŷ_zfnet[rnd_i], color=:red, location=:bottom)
+end
+
+# ╔═╡ ac1f1ea4-6c4a-11eb-30d5-69210d1f3cae
+md"### VGG11"
+
+# ╔═╡ 7b0e34c6-67ba-11eb-2500-378603362df8
+begin
+	ŷ_vgg11 = Neural.predict(vgg11, X) |> cpu
+	Evaluation.rmse(y, ŷ_vgg11), Evaluation.catastrophic_redshift_ratio(y, ŷ_vgg11)
 end
 
 # ╔═╡ e6d5d6fa-6aab-11eb-0434-19c6a5a97099
 begin
 	density(y, label="Validation Set", xlabel="z", ylabel="Density")
 	density!(ŷ_vgg11, label="VGG11 Predictions")
+end
+
+# ╔═╡ 2cdd4812-6d05-11eb-379d-d5877d783354
+md"### VGG16"
+
+# ╔═╡ 32f4f934-6d05-11eb-28f6-ed83ef244219
+begin
+	ŷ_vgg16 = Neural.predict(vgg16, X) |> cpu
+	Evaluation.rmse(y, ŷ_vgg16), Evaluation.catastrophic_redshift_ratio(y, ŷ_vgg16)
+end
+
+# ╔═╡ a1b55d96-6d05-11eb-2543-63f5ce03de8d
+begin
+	density(y, label="Validation Set", xlabel="z", ylabel="Density")
+	density!(ŷ_vgg16, label="VGG16 Predictions")
 end
 
 # ╔═╡ 6e379afc-6ac0-11eb-1c5a-7510123e34d2
@@ -175,21 +203,25 @@ plot(
 
 # ╔═╡ Cell order:
 # ╟─ed4d438e-6aaa-11eb-051e-efe644cce631
+# ╠═1f0e81de-6d04-11eb-2d25-97f57a2a305c
 # ╠═6dc764b2-66e7-11eb-0833-9dc54a18f920
 # ╠═8643602a-66e9-11eb-3700-374047551428
 # ╠═edd6e898-6797-11eb-2cee-791764fb425a
 # ╟─f614d7c0-6aaa-11eb-1c62-73c54a75a0ab
 # ╠═9e6ee084-6798-11eb-3683-b5c8c998cd77
 # ╠═06de9ac0-679d-11eb-17d8-6f5359328d71
-# ╠═67e19e7e-679f-11eb-0eb1-c39fc5eac3ed
 # ╠═33c2836a-6aab-11eb-1c93-257ed54b0585
 # ╟─0348b7e0-6aab-11eb-16ba-d574e6296961
-# ╠═7b0e34c6-67ba-11eb-2500-378603362df8
-# ╠═89f370c6-67ba-11eb-24da-2b0a0f0ad532
-# ╠═98d6ed82-6ac3-11eb-0851-89add7ad3b38
-# ╠═8d836ffc-67ba-11eb-0d82-f70af20aeeae
+# ╟─b8819d20-6c4a-11eb-2bad-e95ec5a69145
+# ╠═96ff45dc-6c4a-11eb-3a22-550fb0ec4d22
+# ╠═8c0247fa-6c4b-11eb-1133-c5ca6a10f74c
 # ╠═1d52576a-6abb-11eb-2dd8-c388b2365ddd
+# ╟─ac1f1ea4-6c4a-11eb-30d5-69210d1f3cae
+# ╠═7b0e34c6-67ba-11eb-2500-378603362df8
 # ╠═e6d5d6fa-6aab-11eb-0434-19c6a5a97099
+# ╟─2cdd4812-6d05-11eb-379d-d5877d783354
+# ╠═32f4f934-6d05-11eb-28f6-ed83ef244219
+# ╠═a1b55d96-6d05-11eb-2543-63f5ce03de8d
 # ╟─6e379afc-6ac0-11eb-1c5a-7510123e34d2
 # ╠═279ea616-6ac1-11eb-10b3-ff31e5c3305e
 # ╠═92607376-6ac1-11eb-3620-1ff033ef6890

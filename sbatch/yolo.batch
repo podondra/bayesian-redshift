@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --partition=gpufast --gres=gpu:1 --time=4:00:00
 #SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=1
-#SBATCH --mem=32G
+#SBATCH --mem=64G
 #SBATCH --job-name=yolo --output=misc/yolo.out
 #SBATCH --mail-user=podszond@fit.cvut.cz --mail-type=ALL
 
