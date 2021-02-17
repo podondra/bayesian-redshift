@@ -32,6 +32,34 @@ function zfnet()
         Dense(4096, 1))
 end
 
+function vgg8_small_bn(; kernel::Int64=3)
+    Chain(
+        Flux.unsqueeze(2),
+        Conv((kernel, ), 1 => 16, pad=SamePad()),
+        BatchNorm(16, relu),
+        MaxPool((2, )),
+        Conv((kernel, ), 16 => 32, pad=SamePad()),
+        BatchNorm(32, relu),
+        MaxPool((2, )),
+        Conv((kernel, ), 32 => 64, pad=SamePad()),
+        BatchNorm(64, relu),
+        MaxPool((2, )),
+        Conv((kernel, ), 64 => 128, pad=SamePad()),
+        BatchNorm(128, relu),
+        MaxPool((2, )),
+        Conv((kernel, ), 128 => 256, pad=SamePad()),
+        BatchNorm(256, relu),
+        MaxPool((2, )),
+        flatten,
+        Dense(16 * 256, 1024),
+        BatchNorm(1024, relu),
+        Dropout(0.5),
+        Dense(1024, 1024),
+        BatchNorm(1024, relu),
+        Dropout(0.5),
+        Dense(1024, 1))
+end
+
 function vgg8_small(; kernel::Int64=3)
     Chain(
         Flux.unsqueeze(2),
@@ -132,9 +160,11 @@ function train_with_early_stopping!(
     loss_validation_star = typemax(Float32)
     i = 0
     while i < patience
+        trainmode!(model)
         Flux.train!(loss, Θ, loader_train, optimizer)
         epoch += 1
 
+        testmode!(model)
         loss_train = mse(predict(model, X_train), y_train)
         loss_validation = mse(predict(model, X_validation), y_validation)
         if loss_validation < loss_validation_star
