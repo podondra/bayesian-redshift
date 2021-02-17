@@ -13,19 +13,6 @@ using TensorBoardLogger
 
 export train_wrapper!, nn
 
-function nn()
-    Chain(
-        Dense(512, 512, relu),
-        Dropout(0.5),
-        Dense(512, 512, relu),
-        Dropout(0.5),
-        Dense(512, 512, relu),
-        Dropout(0.5),
-        Dense(512, 512, relu),
-        Dropout(0.5),
-        Dense(512, 1))
-end
-
 function zfnet()
     Chain(
         Flux.unsqueeze(2),
@@ -39,6 +26,48 @@ function zfnet()
         MaxPool((3, ), stride=2),
         flatten,
         Dense(15 * 256, 4096, relu),
+        Dropout(0.5),
+        Dense(4096, 4096, relu),
+        Dropout(0.5),
+        Dense(4096, 1))
+end
+
+function vgg8_small(; kernel::Int64=3)
+    Chain(
+        Flux.unsqueeze(2),
+        Conv((kernel, ), 1 => 16, relu, pad=SamePad()),
+        MaxPool((2, )),
+        Conv((kernel, ), 16 => 32, relu, pad=SamePad()),
+        MaxPool((2, )),
+        Conv((kernel, ), 32 => 64, relu, pad=SamePad()),
+        MaxPool((2, )),
+        Conv((kernel, ), 64 => 128, relu, pad=SamePad()),
+        MaxPool((2, )),
+        Conv((kernel, ), 128 => 256, relu, pad=SamePad()),
+        MaxPool((2, )),
+        flatten,
+        Dense(16 * 256, 1024, relu),
+        Dropout(0.5),
+        Dense(1024, 1024, relu),
+        Dropout(0.5),
+        Dense(1024, 1))
+end
+
+function vgg8()
+    Chain(
+        Flux.unsqueeze(2),
+        Conv((3, ), 1 => 64, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 64 => 128, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 128 => 256, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 256 => 512, relu, pad=1),
+        MaxPool((2, )),
+        Conv((3, ), 512 => 512, relu, pad=1),
+        MaxPool((2, )),
+        flatten,
+        Dense(16 * 512, 4096, relu),
         Dropout(0.5),
         Dense(4096, 4096, relu),
         Dropout(0.5),
@@ -65,73 +94,6 @@ function vgg11()
         Dense(16 * 512, 4096, relu),
         Dropout(0.5),
         Dense(4096, 4096, relu),
-        Dropout(0.5),
-        Dense(4096, 1))
-end
-
-function vgg16()
-    Chain(
-        Flux.unsqueeze(2),
-        Conv((3, ), 1 => 64, relu, pad=1),
-        Conv((3, ), 64 => 64, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 64 => 128, relu, pad=1),
-        Conv((3, ), 128 => 128, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 128 => 256, relu, pad=1),
-        Conv((3, ), 256 => 256, relu, pad=1),
-        Conv((3, ), 256 => 256, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 256 => 512, relu, pad=1),
-        Conv((3, ), 512 => 512, relu, pad=1),
-        Conv((3, ), 512 => 512, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 512 => 512, relu, pad=1),
-        Conv((3, ), 512 => 512, relu, pad=1),
-        Conv((3, ), 512 => 512, relu, pad=1),
-        MaxPool((2, )),
-        flatten,
-        Dense(16 * 512, 4096, relu),
-        Dropout(0.5),
-        Dense(4096, 4096, relu),
-        Dropout(0.5),
-        Dense(4096, 1))
-end
-
-function yolo()
-    leakyrelu(x) = max.(0.1 * x, x)
-    Chain(
-        Flux.unsqueeze(2),
-        Conv((7, ), 1 => 64, leakyrelu, stride=2, pad=SamePad()),
-        MeanPool((2, )),
-        Conv((3, ), 64 => 192, leakyrelu, pad=SamePad()),
-        MeanPool((2, )),
-        Conv((1, ), 192 => 128, leakyrelu),
-        Conv((3, ), 128 => 256, leakyrelu, pad=SamePad()),
-        Conv((1, ), 256 => 256, leakyrelu),
-        Conv((3, ), 256 => 512, leakyrelu, pad=SamePad()),
-        MeanPool((2, )),
-        Conv((1, ), 512 => 256, leakyrelu, pad=SamePad()),
-        Conv((3, ), 256 => 512, leakyrelu, pad=SamePad()),
-        Conv((1, ), 512 => 256, leakyrelu),
-        Conv((3, ), 256 => 512, leakyrelu, pad=SamePad()),
-        Conv((1, ), 512 => 256, leakyrelu),
-        Conv((3, ), 256 => 512, leakyrelu, pad=SamePad()),
-        Conv((1, ), 512 => 256, leakyrelu),
-        Conv((3, ), 256 => 512, leakyrelu, pad=SamePad()),
-        Conv((1, ), 512 => 512, leakyrelu),
-        Conv((3, ), 512 => 1024, leakyrelu, pad=SamePad()),
-        MeanPool((2, )),
-        Conv((1, ), 1024 => 512, leakyrelu),
-        Conv((3, ), 512 => 1024, leakyrelu, pad=SamePad()),
-        Conv((1, ), 1024 => 512, leakyrelu),
-        Conv((3, ), 512 => 1024, leakyrelu, pad=SamePad()),
-        Conv((3, ), 1024 => 1024, leakyrelu, pad=SamePad()),
-        Conv((3, ), 1024 => 1024, leakyrelu, stride=2, pad=SamePad()),
-        Conv((3, ), 1024 => 1024, leakyrelu, pad=SamePad()),
-        Conv((3, ), 1024 => 1024, leakyrelu, pad=SamePad()),
-        flatten,
-        Dense(8 * 1024, 4096, leakyrelu),
         Dropout(0.5),
         Dense(4096, 1))
 end

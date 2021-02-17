@@ -35,7 +35,8 @@ function plot_spectrum(flux; kwargs...)
 end
 
 # http://classic.sdss.org/dr6/algorithms/linestable.html
-LINES = Dict("Lyα" => 1215.24,
+LINES = Dict("O VI" => 1033.82,
+             "Lyα" => 1215.24,
              "C IV" => 1549.48,
              "C III" => 1908.734,
              "Mg II" => 2799.117,
