@@ -6,7 +6,7 @@ function rmse(t, y)
     sqrt(1 / length(t) * (t - y)'  * (t - y))
 end
 
-function compute_delta_v(z, z_vi)
+function compute_delta_v(z_vi, z)
     # the speed of light in vacuum (km / s)
     c = 299792.458
     c .* abs.(z - z_vi) ./ (1 .+ z_vi)
