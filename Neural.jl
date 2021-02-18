@@ -32,76 +32,6 @@ function zfnet()
         Dense(4096, 1))
 end
 
-function vgg8_small_bn(; kernel::Int64=3)
-    Chain(
-        Flux.unsqueeze(2),
-        Conv((kernel, ), 1 => 16, pad=SamePad()),
-        BatchNorm(16, relu),
-        MaxPool((2, )),
-        Conv((kernel, ), 16 => 32, pad=SamePad()),
-        BatchNorm(32, relu),
-        MaxPool((2, )),
-        Conv((kernel, ), 32 => 64, pad=SamePad()),
-        BatchNorm(64, relu),
-        MaxPool((2, )),
-        Conv((kernel, ), 64 => 128, pad=SamePad()),
-        BatchNorm(128, relu),
-        MaxPool((2, )),
-        Conv((kernel, ), 128 => 256, pad=SamePad()),
-        BatchNorm(256, relu),
-        MaxPool((2, )),
-        flatten,
-        Dense(16 * 256, 1024),
-        BatchNorm(1024, relu),
-        Dropout(0.5),
-        Dense(1024, 1024),
-        BatchNorm(1024, relu),
-        Dropout(0.5),
-        Dense(1024, 1))
-end
-
-function vgg8_small(; kernel::Int64=3)
-    Chain(
-        Flux.unsqueeze(2),
-        Conv((kernel, ), 1 => 16, relu, pad=SamePad()),
-        MaxPool((2, )),
-        Conv((kernel, ), 16 => 32, relu, pad=SamePad()),
-        MaxPool((2, )),
-        Conv((kernel, ), 32 => 64, relu, pad=SamePad()),
-        MaxPool((2, )),
-        Conv((kernel, ), 64 => 128, relu, pad=SamePad()),
-        MaxPool((2, )),
-        Conv((kernel, ), 128 => 256, relu, pad=SamePad()),
-        MaxPool((2, )),
-        flatten,
-        Dense(16 * 256, 1024, relu),
-        Dropout(0.5),
-        Dense(1024, 1024, relu),
-        Dropout(0.5),
-        Dense(1024, 1))
-end
-
-function vgg8()
-    Chain(
-        Flux.unsqueeze(2),
-        Conv((3, ), 1 => 64, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 64 => 128, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 128 => 256, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 256 => 512, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 512 => 512, relu, pad=1),
-        MaxPool((2, )),
-        flatten,
-        Dense(16 * 512, 4096, relu),
-        Dropout(0.5),
-        Dense(4096, 4096, relu),
-        Dropout(0.5),
-        Dense(4096, 1))
-end
-
 function vgg11()
     Chain(
         Flux.unsqueeze(2),
@@ -124,6 +54,27 @@ function vgg11()
         Dense(4096, 4096, relu),
         Dropout(0.5),
         Dense(4096, 1))
+end
+
+function vgg8()
+    Chain(
+        Flux.unsqueeze(2),
+        Conv((13, ), 1 => 16, relu, pad=SamePad()),
+        MaxPool((2, )),
+        Conv((11, ), 16 => 32, relu, pad=SamePad()),
+        MaxPool((2, )),
+        Conv((9, ), 32 => 64, relu, pad=SamePad()),
+        MaxPool((2, )),
+        Conv((7, ), 64 => 128, relu, pad=SamePad()),
+        MaxPool((2, )),
+        Conv((5, ), 128 => 256, relu, pad=SamePad()),
+        MaxPool((2, )),
+        flatten,
+        Dense(16 * 256, 1024, relu),
+        Dropout(0.5),
+        Dense(1024, 1024, relu),
+        Dropout(0.5),
+        Dense(1024, 1))
 end
 
 function get_data()
@@ -178,13 +129,13 @@ function train_with_early_stopping!(
     end
 end
 
-function train_wrapper!(model, name_model)
+function train_wrapper!(model, name_model; bs=256, wd=1e-3)
     logger = TBLogger("runs/" * name_model, tb_overwrite)
     X_train, y_train, X_validation, y_validation = get_data()
     with_logger(logger) do
         train_with_early_stopping!(
-            model, get_data()...,
-            batchsize=256, patience=64, weight_decay=1e-3,
+            model, X_train, y_train, X_validation, y_validation,
+            batchsize=bs, patience=64, weight_decay=wd,
             device=gpu, file_model="models/" * name_model * ".bson")
     end
 end

@@ -8,4 +8,4 @@
 module purge
 module load Julia/1.5.1-linux-x86_64
 
-srun julia --project --eval "include(\"Neural.jl\"); import .Neural; Neural.train_wrapper!(Neural.zfnet(), \"zfnet\");"
+srun julia --project --eval "include(\"Neural.jl\"); import .Neural; Neural.train_wrapper!(Neural.zfnet(), \"zfnet\", wd=0);"
