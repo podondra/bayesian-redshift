@@ -5,7 +5,7 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 2a2861e4-9d00-11eb-08fd-972e78fd9d18
-using DataFrames, FITSIO, Statistics, StatsPlots
+using DataFrames, FITSIO, HDF5, Statistics, StatsPlots
 
 # ╔═╡ 24ee40d4-7e63-4654-b112-b7ecb7b912d2
 md"# DR12Q Superset Catalogue
@@ -28,7 +28,7 @@ begin
 end
 
 # ╔═╡ 43c3d594-e3a1-4af1-b093-f32fcd5b7e70
-@df superset histogram(:z_vi, xlabel="z", ylabel="Density", legend=:none)
+@df superset histogram(:z_vi, xlabel="z", ylabel="Count", legend=:none)
 
 # ╔═╡ d93bd116-4d8e-42cb-a27c-9a7ee06d67dd
 md"There are redshifts smaller than 0."
@@ -99,6 +99,28 @@ end
 # ╔═╡ 7e4db827-36f9-4aa0-a7a2-c213e6cd8126
 final_subset = wave_subset[wave_idx, :]
 
+# ╔═╡ 5d6d6774-0587-4649-a230-24a2519e81f0
+md"## HDF5"
+
+# ╔═╡ d6165f9c-41ee-4b3e-b7fb-004e3e4c4825
+begin
+	id = Matrix{Int32}(undef, 3, size(final_subset, 1))
+	id[1, :] = final_subset[:plate]
+	id[2, :] = final_subset[:mjd]
+	id[3, :] = final_subset[:fiberid]
+	id
+end
+
+# ╔═╡ 49ac94ac-1563-4516-97b5-744ea9d55f93
+begin
+	# read-write, create file if not existing, preserve existing contents
+	fid = h5open("data/dr12q_superset.hdf5", "cw")
+	write_dataset(fid, "id", id)
+	write_dataset(fid, "z_vi", convert(Vector{Float32}, final_subset[:z_vi]))
+	write_dataset(fid, "z_pipe", convert(Vector{Float32}, final_subset[:z_pipe]))
+	close(fid)
+end
+
 # ╔═╡ Cell order:
 # ╟─24ee40d4-7e63-4654-b112-b7ecb7b912d2
 # ╠═2a2861e4-9d00-11eb-08fd-972e78fd9d18
@@ -117,3 +139,6 @@ final_subset = wave_subset[wave_idx, :]
 # ╠═900fd965-17ba-4a28-9e63-ca3dbc03975b
 # ╠═36e49ea5-41a7-4034-ad58-1354288e0cf0
 # ╠═7e4db827-36f9-4aa0-a7a2-c213e6cd8126
+# ╟─5d6d6774-0587-4649-a230-24a2519e81f0
+# ╠═d6165f9c-41ee-4b3e-b7fb-004e3e4c4825
+# ╠═49ac94ac-1563-4516-97b5-744ea9d55f93
