@@ -6,34 +6,28 @@ using Statistics
 include("Utils.jl")
 import .Utils
 
-function polynomial_features(x::Vector{Float32}, degree::Int64)::Matrix{Float64}
-    X = Matrix{Float64}(undef, length(x), degree + 1)
-    for col = 1:degree + 1
-        X[:, col] = x .^ (col - 1)
-    end
-    return X
-end
+ε = 0.00005
 
 @time begin
     fid = h5open("data/dr16q_superset.hdf5", "r+")
     id = read(fid["id"])
     n = size(id, 2)
 
-    fluxes = Matrix{Float32}(undef, 3826, n)
+    fluxes = Matrix{Float32}(undef, 3816, n)
 
     Threads.@threads for i = 1:n
-        loglam, flux = Utils.get_spectrum(id[:, i]...)
+        loglam, flux = Utils.get_spectrum("DR16Q_Superset_v3", id[:, i]...)
 
         # standardise flux
         flux_mean = mean(flux)
         standard_flux = Vector{Float64}((flux .- flux_mean)
                                         ./ std(flux, mean=flux_mean))
 
-        X = polynomial_features(loglam, 3)
+        X = Utils.polynomial_features(loglam, 3)
 
         n_best, a_best = dls_fit(X, standard_flux, 2, 0.9)
 
-        idx = (3.58115 .<= loglam) .& (loglam .<= 3.96375)
+        idx = (Utils.LOGLAMMIN - ε .< loglam) .& (loglam .< Utils.LOGLAMMAX + ε)
         fluxes[:, i] = (standard_flux - X * a_best)[idx]
     end
 

@@ -3,7 +3,7 @@ import numpy as np
 from spectres import spectres
 
 
-LOGLAMMIN, LOGLAMMAX = 3.5812, 3.9637
+LOGLAMMIN, LOGLAMMAX = 3.5818, 3.9633
 N_FEATURES = 512
 EPS = 0.0005
 N_VAL, N_TEST = 50000, 50000
@@ -13,9 +13,12 @@ with h5py.File("data/dr16q_superset.hdf5", "r+") as datafile:
     ids = datafile["id"][:]
     fluxes = datafile["flux"][:]
     z = datafile["z"][:]
+    source_z = datafile["source_z"][:]
+    z_qn = datafile["z_qn"][:]
+    z_10k = datafile["z_10k"][:]
+    z_vi = datafile["z_vi"][:]
     z_pipe = datafile["z_pipe"][:]
     z_pca = datafile["z_pca"][:]
-    z_qn = datafile["z_qn"][:]
 
     # resample
     n_waves = fluxes.shape[1]
@@ -42,6 +45,9 @@ with h5py.File("data/dr16q_superset.hdf5", "r+") as datafile:
         datafile.create_dataset("id_" + name, data=ids[idx, :])
         datafile.create_dataset("X_" + name, data=X[idx])
         datafile.create_dataset("z_" + name, data=z[idx])
+        datafile.create_dataset("source_z_" + name, data=source_z[idx])
+        datafile.create_dataset("z_qn_" + name, data=z_qn[idx])
+        datafile.create_dataset("z_10k_" + name, data=z_10k[idx])
+        datafile.create_dataset("z_vi_" + name, data=z_vi[idx])
         datafile.create_dataset("z_pipe_" + name, data=z_pipe[idx])
         datafile.create_dataset("z_pca_" + name, data=z_pca[idx])
-        datafile.create_dataset("z_qn_" + name, data=z_qn[idx])

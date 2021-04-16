@@ -1,0 +1,11 @@
+#!/bin/bash
+#SBATCH --partition=cpufast --time=4:00:00
+#SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=16
+#SBATCH --mem=128G
+#SBATCH --job-name=dr12q_superset_extr --output=misc/dr12q_superset_extr.out
+#SBATCH --mail-user=podszond@fit.cvut.cz --mail-type=ALL
+
+module purge
+module load Julia/1.5.1-linux-x86_64
+
+srun julia --project --threads 16 dr12q_superset_extr.jl
