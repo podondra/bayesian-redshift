@@ -15,11 +15,8 @@ export model, predict, train_wrapper!
 
 function model()
     Chain(
-        Flux.unsqueeze(2),
-        Conv((3, ), 1 => 16, relu, pad=SamePad()),
+        Dense(512, 4096, relu),
         Dropout(0.5),
-        MaxPool((2, )),
-        flatten,
         Dense(4096, 1024, relu),
         Dropout(0.5),
         Dense(1024, 1024, relu),

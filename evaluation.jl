@@ -39,7 +39,7 @@ end
 Evaluation.rmse(y_validation, y_pipe), Evaluation.catastrophic_redshift_ratio(y_validation, y_pipe)
 
 # ╔═╡ 646c8844-d25a-4453-a4d9-e6f6279c183b
-md"## ConvNets"
+md"## Machine Learnig"
 
 # ╔═╡ edd6e898-6797-11eb-2cee-791764fb425a
 begin
@@ -86,7 +86,7 @@ model_bayes = deepcopy(model)
 # ╔═╡ 92607376-6ac1-11eb-3620-1ff033ef6890
 function point_estimate(model, X; n_samples=32)
 	trainmode!(model)
-	outputs = reduce(hcat, [predict(model, X) for i in 1:n_samples])
+	outputs = reduce(hcat, [Neural.predict(model, X) for i in 1:n_samples])
 	ŷ_mean = dropdims(mean(outputs, dims=2), dims=2)
 	ŷ_std = dropdims(std(outputs, mean=ŷ_mean, dims=2), dims=2)
 	return ŷ_mean, ŷ_std
