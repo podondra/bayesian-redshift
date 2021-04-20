@@ -15,13 +15,19 @@ export model, predict, train_wrapper!
 
 function model()
     Chain(
-        Dense(512, 4096, relu),
+        Flux.unsqueeze(2),
+        Conv((9, ), 1 => 16, relu, pad=SamePad()),
         Dropout(0.5),
+        MaxPool((2, )),
+        Conv((9, ), 16 => 32, relu, pad=SamePad()),
+        Dropout(0.5),
+        MaxPool((2, )),
+        flatten,
         Dense(4096, 1024, relu),
         Dropout(0.5),
         Dense(1024, 1024, relu),
         Dropout(0.5),
-        Dense(1024, 1))
+        Dense(1024, 1, relu))
 end
 
 function get_data()
@@ -74,7 +80,7 @@ function train_with_early_stopping!(
     end
 end
 
-function train_wrapper!(model, name_model; bs=256, wd=1e-3)
+function train_wrapper!(model, name_model; bs=256, wd=1e-6)
     logger = TBLogger("runs/" * name_model, tb_overwrite)
     X_train, y_train, X_validation, y_validation = get_data()
     with_logger(logger) do

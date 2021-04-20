@@ -67,7 +67,7 @@ begin
 	z = y_validation[i]
 	ẑ = ŷ_validation[i]
 	Δv = Evaluation.compute_delta_v(z, ẑ)
-	Utils.plot_spectrum(X_validation[:, i], label="z = $(z); ẑ = $(ẑ); Δv = $(Δv)")
+	Utils.plot_spectrum(X_validation[:, i], title="z = $(z); ẑ = $(ẑ); Δv = $(Δv)")
 	Utils.plot_spectral_lines!(z)
 	Utils.plot_spectral_lines!(ẑ, color=:red, location=:bottom)
 end
