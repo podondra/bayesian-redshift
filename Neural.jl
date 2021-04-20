@@ -11,52 +11,18 @@ using Logging
 using NNlib
 using TensorBoardLogger
 
-export train_wrapper!, nn
+export convnet, nn, predict, train_wrapper!
 
-function zfnet()
+function nn()
     Chain(
-        Flux.unsqueeze(2),
-        Conv((7, ), 1 => 96, relu, pad=1, stride=2),
-        MaxPool((3, ), pad=1, stride=2),
-        Conv((5, ), 96 => 256, relu, stride=2),
-        MaxPool((3, ), pad=1, stride=2),
-        Conv((3, ), 256 => 384, relu, pad=1),
-        Conv((3, ), 384 => 384, relu, pad=1),
-        Conv((3, ), 384 => 256, relu, pad=1),
-        MaxPool((3, ), stride=2),
-        flatten,
-        Dense(15 * 256, 4096, relu),
+        Dense(512, 512, relu),
         Dropout(0.5),
-        Dense(4096, 4096, relu),
+        Dense(512, 512, relu),
         Dropout(0.5),
-        Dense(4096, 1))
+        Dense(512, 1))
 end
 
-function vgg11()
-    Chain(
-        Flux.unsqueeze(2),
-        Conv((3, ), 1 => 64, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 64 => 128, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 128 => 256, relu, pad=1),
-        Conv((3, ), 256 => 256, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 256 => 512, relu, pad=1),
-        Conv((3, ), 512 => 512, relu, pad=1),
-        MaxPool((2, )),
-        Conv((3, ), 512 => 512, relu, pad=1),
-        Conv((3, ), 512 => 512, relu, pad=1),
-        MaxPool((2, )),
-        flatten,
-        Dense(16 * 512, 4096, relu),
-        Dropout(0.5),
-        Dense(4096, 4096, relu),
-        Dropout(0.5),
-        Dense(4096, 1))
-end
-
-function vgg8()
+function convnet()
     Chain(
         Flux.unsqueeze(2),
         Conv((13, ), 1 => 16, relu, pad=SamePad()),
@@ -70,7 +36,7 @@ function vgg8()
         Conv((5, ), 128 => 256, relu, pad=SamePad()),
         MaxPool((2, )),
         flatten,
-        Dense(16 * 256, 1024, relu),
+        Dense(4096, 1024, relu),
         Dropout(0.5),
         Dense(1024, 1024, relu),
         Dropout(0.5),
@@ -78,11 +44,11 @@ function vgg8()
 end
 
 function get_data()
-    datafile = h5open("data/dr16q_superset.hdf5")
+    datafile = h5open("data/dr12q_superset.hdf5")
     X_train = read(datafile, "X_tr")
-    y_train = convert(Array{Float32}, read(datafile, "z_tr"))
+    y_train = read(datafile, "z_vi_tr")
     X_validation = read(datafile, "X_va")
-    y_validation = convert(Array{Float32}, read(datafile, "z_va"))
+    y_validation = read(datafile, "z_vi_va")
     close(datafile)
     return X_train, y_train, X_validation, y_validation
 end
@@ -111,11 +77,9 @@ function train_with_early_stopping!(
     loss_validation_star = typemax(Float32)
     i = 0
     while i < patience
-        trainmode!(model)
         Flux.train!(loss, Θ, loader_train, optimizer)
         epoch += 1
 
-        testmode!(model)
         loss_train = mse(predict(model, X_train), y_train)
         loss_validation = mse(predict(model, X_validation), y_validation)
         if loss_validation < loss_validation_star
@@ -133,8 +97,7 @@ function train_wrapper!(model, name_model; bs=256, wd=1e-3)
     logger = TBLogger("runs/" * name_model, tb_overwrite)
     X_train, y_train, X_validation, y_validation = get_data()
     with_logger(logger) do
-        train_with_early_stopping!(
-            model, X_train, y_train, X_validation, y_validation,
+        train_with_early_stopping!(model, get_data()...,
             batchsize=bs, patience=64, weight_decay=wd,
             device=gpu, file_model="models/" * name_model * ".bson")
     end

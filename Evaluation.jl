@@ -1,6 +1,6 @@
 module Evaluation
 
-export rmse, catastrophic_redshift_ratio
+export rmse, catastrophic_redshift_ratio, compute_delta_v
 
 function rmse(t, y)
     sqrt(1 / length(t) * (t - y)'  * (t - y))
