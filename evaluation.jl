@@ -21,7 +21,9 @@ md"# Evaluation"
 begin
 	dr12q_file = h5open("data/dr12q_superset.hdf5", "r")
 	id_validation = read(dr12q_file, "id_va")
+	X_train = gpu(read(dr12q_file, "X_tr"))
 	X_validation = gpu(read(dr12q_file, "X_va"))
+	y_train = read(dr12q_file, "z_vi_tr")
 	y_validation = read(dr12q_file, "z_vi_va")
 	y_pipe = read(dr12q_file, "z_pipe_va")
 	close(dr12q_file)
@@ -34,7 +36,7 @@ begin
 end
 
 # ╔═╡ 61d4b6de-5efa-400b-b4b0-cbccab2d9f6b
-rmse(y_validation, y_pipe), catastrophic_redshift_ratio(y_validation, y_pipe)
+Evaluation.rmse(y_validation, y_pipe), Evaluation.catastrophic_redshift_ratio(y_validation, y_pipe)
 
 # ╔═╡ 646c8844-d25a-4453-a4d9-e6f6279c183b
 md"## ConvNets"
@@ -42,28 +44,32 @@ md"## ConvNets"
 # ╔═╡ edd6e898-6797-11eb-2cee-791764fb425a
 begin
 	Core.eval(Main, :(import Flux, NNlib))
-	model = gpu(BSON.load("models/nn.bson")[:model])
-	ŷ_validation = cpu(predict(model, X_validation))
+	model = gpu(BSON.load("models/model.bson")[:model])
+	ŷ_train = cpu(Neural.predict(model, X_train))
+	ŷ_validation = cpu(Neural.predict(model, X_validation))
 end
 
+# ╔═╡ d554d1f7-93d5-445a-8a74-ef9035bb2190
+Evaluation.rmse(y_train, ŷ_train), Evaluation.catastrophic_redshift_ratio(y_train, ŷ_train)
+
 # ╔═╡ 7b0e34c6-67ba-11eb-2500-378603362df8
-rmse(y_validation, ŷ_validation), catastrophic_redshift_ratio(y_validation, ŷ_validation)
+Evaluation.rmse(y_validation, ŷ_validation), Evaluation.catastrophic_redshift_ratio(y_validation, ŷ_validation)
+
+# ╔═╡ e6d5d6fa-6aab-11eb-0434-19c6a5a97099
+begin
+	density(y_validation, label="Visual", xlabel="z", ylabel="Density")
+	density!(ŷ_validation, label="Model")
+end
 
 # ╔═╡ 1d52576a-6abb-11eb-2dd8-c388b2365ddd
 begin
 	i = rand(1:size(id_validation, 2))
 	z = y_validation[i]
 	ẑ = ŷ_validation[i]
-	Δv = compute_delta_v(z, ẑ)
-	plot_spectrum(X_validation[:, i], label="z = $(z); ẑ = $(ẑ); Δv = $(Δv)")
-	plot_spectral_lines!(z)
-	plot_spectral_lines!(ẑ, color=:red, location=:bottom)
-end
-
-# ╔═╡ e6d5d6fa-6aab-11eb-0434-19c6a5a97099
-begin
-	density(y_validation, label="Validation Set", xlabel="z", ylabel="Density")
-	density!(ŷ_validation, label="Prediction")
+	Δv = Evaluation.compute_delta_v(z, ẑ)
+	Utils.plot_spectrum(X_validation[:, i], label="z = $(z); ẑ = $(ẑ); Δv = $(Δv)")
+	Utils.plot_spectral_lines!(z)
+	Utils.plot_spectral_lines!(ẑ, color=:red, location=:bottom)
 end
 
 # ╔═╡ 6e379afc-6ac0-11eb-1c5a-7510123e34d2
@@ -89,13 +95,6 @@ end
 # ╔═╡ 77682b6c-6ac2-11eb-2aa3-01e02dea681e
 ŷ_bayes, σ_bayes = cpu(point_estimate(model_bayes, X_validation))
 
-# ╔═╡ fd62f99a-71cf-11eb-287c-475258d276aa
-begin
-	σ_threshold = 0.075
-	idx = σ_bayes .< σ_threshold
-	rmse(y_validation[idx], ŷ_bayes[idx]), catastrophic_redshift_ratio(y_validation[idx], ŷ_bayes[idx]), sum(idx) / length(y_validation)
-end
-
 # ╔═╡ a8c710e6-6ac8-11eb-3f00-5d2b72864754
 begin
 	ŷ_error = y_validation - ŷ_bayes
@@ -111,21 +110,28 @@ density(σ_bayes, xlabel="σ", ylabel="Density", label=:none)
 # ╔═╡ c93ef038-6acc-11eb-2e6e-298f7178eb89
 plot(
 	σ_range,
-	[rmse(y_validation[σ_bayes .< σ], ŷ_bayes[σ_bayes .< σ]) for σ in σ_range],
-	ylabel="RMSE", xlabel="σ",)
+	[Evaluation.rmse(y_validation[σ_bayes .< σ], ŷ_bayes[σ_bayes .< σ]) for σ in σ_range],
+	ylabel="RMSE", xlabel="σ", label=:none)
 
-# ╔═╡ 9f882f9c-6acd-11eb-1795-b7ec4224cf83
-plot(
-	σ_range,
-	[catastrophic_redshift_ratio(y_validation[σ_bayes .< σ], ŷ_bayes[σ_bayes .< σ])
-		for σ in σ_range],
-	ylabel="Catastrophic z Ratio", xlabel="σ")
+# ╔═╡ fd62f99a-71cf-11eb-287c-475258d276aa
+begin
+	σ_threshold = 0.1
+	idx = σ_bayes .< σ_threshold
+	Evaluation.rmse(y_validation[idx], ŷ_bayes[idx]), Evaluation.catastrophic_redshift_ratio(y_validation[idx], ŷ_bayes[idx]), sum(idx) / length(y_validation)
+end
 
 # ╔═╡ bf58926c-6acd-11eb-3c23-bde13af4bfc2
-plot(
-	σ_range,
-	[sum(σ_bayes .< σ) / length(σ_bayes) for σ in σ_range],
-	ylabel="Completeness", xlabel="σ",)
+begin
+	vline([σ_threshold], label="Threshold")
+	plot!(
+		σ_range,
+		[sum(σ_bayes .< σ) / length(σ_bayes) for σ in σ_range],
+		label="Completeness", xlabel="σ")
+	plot!(
+		σ_range,
+		[Evaluation.catastrophic_redshift_ratio(y_validation[σ_bayes .< σ], ŷ_bayes[σ_bayes .< σ])	for σ in σ_range],
+		label="Catastrophic z Ratio", xlabel="σ")
+end
 
 # ╔═╡ Cell order:
 # ╟─ed4d438e-6aaa-11eb-051e-efe644cce631
@@ -136,17 +142,17 @@ plot(
 # ╠═61d4b6de-5efa-400b-b4b0-cbccab2d9f6b
 # ╟─646c8844-d25a-4453-a4d9-e6f6279c183b
 # ╠═edd6e898-6797-11eb-2cee-791764fb425a
+# ╠═d554d1f7-93d5-445a-8a74-ef9035bb2190
 # ╠═7b0e34c6-67ba-11eb-2500-378603362df8
-# ╠═1d52576a-6abb-11eb-2dd8-c388b2365ddd
 # ╠═e6d5d6fa-6aab-11eb-0434-19c6a5a97099
+# ╠═1d52576a-6abb-11eb-2dd8-c388b2365ddd
 # ╟─6e379afc-6ac0-11eb-1c5a-7510123e34d2
 # ╠═279ea616-6ac1-11eb-10b3-ff31e5c3305e
 # ╠═92607376-6ac1-11eb-3620-1ff033ef6890
 # ╠═77682b6c-6ac2-11eb-2aa3-01e02dea681e
-# ╠═fd62f99a-71cf-11eb-287c-475258d276aa
 # ╠═a8c710e6-6ac8-11eb-3f00-5d2b72864754
 # ╠═e396f046-71ce-11eb-1564-03d296917d94
 # ╠═92142f12-6acd-11eb-32c9-9f33783e75f4
 # ╠═c93ef038-6acc-11eb-2e6e-298f7178eb89
-# ╠═9f882f9c-6acd-11eb-1795-b7ec4224cf83
+# ╠═fd62f99a-71cf-11eb-287c-475258d276aa
 # ╠═bf58926c-6acd-11eb-3c23-bde13af4bfc2

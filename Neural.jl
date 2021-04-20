@@ -11,29 +11,13 @@ using Logging
 using NNlib
 using TensorBoardLogger
 
-export convnet, nn, predict, train_wrapper!
+export model, predict, train_wrapper!
 
-function nn()
-    Chain(
-        Dense(512, 512, relu),
-        Dropout(0.5),
-        Dense(512, 512, relu),
-        Dropout(0.5),
-        Dense(512, 1))
-end
-
-function convnet()
+function model()
     Chain(
         Flux.unsqueeze(2),
-        Conv((13, ), 1 => 16, relu, pad=SamePad()),
-        MaxPool((2, )),
-        Conv((11, ), 16 => 32, relu, pad=SamePad()),
-        MaxPool((2, )),
-        Conv((9, ), 32 => 64, relu, pad=SamePad()),
-        MaxPool((2, )),
-        Conv((7, ), 64 => 128, relu, pad=SamePad()),
-        MaxPool((2, )),
-        Conv((5, ), 128 => 256, relu, pad=SamePad()),
+        Conv((3, ), 1 => 16, relu, pad=SamePad()),
+        Dropout(0.5),
         MaxPool((2, )),
         flatten,
         Dense(4096, 1024, relu),
@@ -98,7 +82,7 @@ function train_wrapper!(model, name_model; bs=256, wd=1e-3)
     X_train, y_train, X_validation, y_validation = get_data()
     with_logger(logger) do
         train_with_early_stopping!(model, get_data()...,
-            batchsize=bs, patience=64, weight_decay=wd,
+            batchsize=bs, patience=32, weight_decay=wd,
             device=gpu, file_model="models/" * name_model * ".bson")
     end
 end
