@@ -47,6 +47,7 @@ begin
 	model = gpu(BSON.load("models/model.bson")[:model])
 	ŷ_train = cpu(Neural.predict(model, X_train))
 	ŷ_validation = cpu(Neural.predict(model, X_validation))
+	model
 end
 
 # ╔═╡ d554d1f7-93d5-445a-8a74-ef9035bb2190
