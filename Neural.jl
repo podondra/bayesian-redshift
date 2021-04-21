@@ -64,7 +64,7 @@ function train_with_early_stopping!(
     Θ = params(model)
 
     epoch = 1
-    loss_validation_star = typemax(Float32)
+    catz_validation_star = typemax(Float32)
     i = 0
     while i < patience
         Flux.train!(loss, Θ, loader_train, optimizer)
@@ -72,15 +72,9 @@ function train_with_early_stopping!(
 
         ŷ_train = predict(model, X_train)
         ŷ_validation = predict(model, X_validation)
+
         loss_train = mse(ŷ_train, y_train)
         loss_validation = mse(ŷ_validation, y_validation)
-        if loss_validation < loss_validation_star
-            i = 0
-            loss_validation_star = loss_validation
-            bson(file_model, model=cpu(model))
-        else
-            i += 1
-        end
         @info "loss" train=loss_train validation=loss_validation
         rmse_train = rmse(y_train, ŷ_train)
         rmse_validation = rmse(y_validation, ŷ_validation)
@@ -88,6 +82,14 @@ function train_with_early_stopping!(
         catz_train = catastrophic_redshift_ratio(y_train, ŷ_train)
         catz_validation = catastrophic_redshift_ratio(y_validation, ŷ_validation)
         @info "catastrophic z ratio" train=catz_train validation=catz_validation
+
+        if catz_validation < catz_validation_star
+            i = 0
+            catz_validation_star = catz_validation
+            bson(file_model, model=cpu(model))
+        else
+            i += 1
+        end
     end
 end
 
