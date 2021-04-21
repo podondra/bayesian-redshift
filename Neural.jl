@@ -80,7 +80,7 @@ function train_with_early_stopping!(
     end
 end
 
-function train_wrapper!(model, name_model; bs=256, wd=1e-6)
+function train_wrapper!(model, name_model; bs=256, wd=1e-8)
     logger = TBLogger("runs/" * name_model, tb_overwrite)
     X_train, y_train, X_validation, y_validation = get_data()
     with_logger(logger) do
