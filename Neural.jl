@@ -11,6 +11,9 @@ using Logging
 using NNlib
 using TensorBoardLogger
 
+include("Evaluation.jl")
+using .Evaluation
+
 export model, predict, train_wrapper!
 
 function model()
@@ -67,8 +70,10 @@ function train_with_early_stopping!(
         Flux.train!(loss, Θ, loader_train, optimizer)
         epoch += 1
 
-        loss_train = mse(predict(model, X_train), y_train)
-        loss_validation = mse(predict(model, X_validation), y_validation)
+        ŷ_train = predict(model, X_train)
+        ŷ_validation = predict(model, X_validation)
+        loss_train = mse(ŷ_train, y_train)
+        loss_validation = mse(ŷ_validation, y_validation)
         if loss_validation < loss_validation_star
             i = 0
             loss_validation_star = loss_validation
@@ -76,7 +81,13 @@ function train_with_early_stopping!(
         else
             i += 1
         end
-        @info "loss" validation=loss_validation train=loss_train
+        @info "loss" train=loss_train validation=loss_validation
+        rmse_train = rmse(y_train, ŷ_train)
+        rmse_validation = rmse(y_validation, ŷ_validation)
+        @info "rmse" train=rmse_train validation=rmse_validation
+        catz_train = catastrophic_redshift_ratio(y_train, ŷ_train)
+        catz_validation = catastrophic_redshift_ratio(y_validation, ŷ_validation)
+        @info "catastrophic z ratio" train=catz_train validation=catz_validation
     end
 end
 
