@@ -51,8 +51,17 @@ end
 # ╔═╡ 7ffb928d-cdff-4eb6-aaf0-86a132f23572
 md"For now leave them aside. It is small amout (6743) versus full superset (546856)."
 
+# ╔═╡ b5cd4071-9eed-4477-8f5c-e4f3331d055c
+begin
+	conf_z_idx = superset[:z_conf_person] .== 3
+	sum(conf_z_idx)
+end
+
 # ╔═╡ 43f3be7c-aada-4e66-aee8-33abecabe7e8
-subset = superset[.~lt_zero_idx, :]
+subset = superset[.~lt_zero_idx .& conf_z_idx, :]
+
+# ╔═╡ 1b6463ca-59ba-4cca-9186-3af9719e2313
+@df subset histogram(:z_vi, xlabel="z", ylabel="Count", legend=:none)
 
 # ╔═╡ 83889e5c-e5d3-4afb-a726-c5ee7c7e7969
 md"## Wavelength Range
@@ -131,7 +140,9 @@ end
 # ╟─0bfe5e2b-8095-412d-85f3-aa373ab20cc9
 # ╠═541e307d-daa7-492c-95b4-6f835252d4d8
 # ╟─7ffb928d-cdff-4eb6-aaf0-86a132f23572
+# ╠═b5cd4071-9eed-4477-8f5c-e4f3331d055c
 # ╠═43f3be7c-aada-4e66-aee8-33abecabe7e8
+# ╠═1b6463ca-59ba-4cca-9186-3af9719e2313
 # ╟─83889e5c-e5d3-4afb-a726-c5ee7c7e7969
 # ╠═3c9d8afd-e1e9-4cb4-8f5d-64dab93168e4
 # ╠═cc76dfe5-9e7c-49ef-ab72-97afed20ccb7
