@@ -9,6 +9,7 @@ using Flux.Optimise
 using HDF5
 using Logging
 using NNlib
+using Statistics
 using TensorBoardLogger
 
 include("Evaluation.jl")
@@ -19,10 +20,10 @@ export model, predict, train_wrapper!
 function model()
     Chain(
         Flux.unsqueeze(2),
-        Conv((9, ), 1 => 16, relu, pad=SamePad()),
+        Conv((3, ), 1 => 16, relu, pad=SamePad()),
         Dropout(0.5),
         MaxPool((2, )),
-        Conv((9, ), 16 => 32, relu, pad=SamePad()),
+        Conv((3, ), 16 => 32, relu, pad=SamePad()),
         Dropout(0.5),
         MaxPool((2, )),
         flatten,

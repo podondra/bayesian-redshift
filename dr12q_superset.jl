@@ -54,7 +54,7 @@ md"For now leave them aside. It is small amout (6743) versus full superset (5468
 # ╔═╡ b5cd4071-9eed-4477-8f5c-e4f3331d055c
 begin
 	conf_z_idx = superset[:z_conf_person] .== 3
-	sum(conf_z_idx)
+	histogram(superset[.~conf_z_idx, :z_vi], xlabel="z", ylabel="Count", legend=:none)
 end
 
 # ╔═╡ 43f3be7c-aada-4e66-aee8-33abecabe7e8
