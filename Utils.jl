@@ -7,9 +7,9 @@ using Printf
 export LOGLAMMIN, LOGLAMMAX, get_filepath, get_spectrum,
        plot_spectral_lines!, plot_spectrum, polynomial_features
 
-ε = 0.0005
+ε = 0.001
 LOGLAMMIN, LOGLAMMAX = 3.5818, 3.9633
-N_FEATURES = 512
+N_FEATURES = 256
 LAMBDA = 10 .^ range(LOGLAMMIN + ε, LOGLAMMAX - ε, length=N_FEATURES)
 
 # http://classic.sdss.org/dr6/algorithms/linestable.html

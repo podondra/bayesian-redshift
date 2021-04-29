@@ -15,15 +15,28 @@ using TensorBoardLogger
 include("Evaluation.jl")
 using .Evaluation
 
-export model, predict, train_wrapper!
+export bayesian_model, model, predict, train_wrapper!
 
 function model()
     Chain(
         Flux.unsqueeze(2),
-        Conv((3, ), 1 => 16, relu, pad=SamePad()),
+        Conv((3, ), 1 => 32, relu, pad=SamePad()),
+        MaxPool((2, )),
+        Conv((3, ), 32 => 64, relu, pad=SamePad()),
+        MaxPool((2, )),
+        flatten,
+        Dense(4096, 1024, relu),
+        Dense(1024, 1024, relu),
+        Dense(1024, 1, relu))
+end
+
+function bayesian_model()
+    Chain(
+        Flux.unsqueeze(2),
+        Conv((3, ), 1 => 32, relu, pad=SamePad()),
         Dropout(0.5),
         MaxPool((2, )),
-        Conv((3, ), 16 => 32, relu, pad=SamePad()),
+        Conv((3, ), 32 => 64, relu, pad=SamePad()),
         Dropout(0.5),
         MaxPool((2, )),
         flatten,
@@ -94,7 +107,7 @@ function train_with_early_stopping!(
     end
 end
 
-function train_wrapper!(model, name_model; bs=256, wd=1e-8)
+function train_wrapper!(model, name_model; bs=256, wd=0)
     logger = TBLogger("runs/" * name_model, tb_overwrite)
     X_train, y_train, X_validation, y_validation = get_data()
     with_logger(logger) do

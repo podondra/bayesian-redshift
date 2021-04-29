@@ -4,8 +4,8 @@ from spectres import spectres
 
 
 LOGLAMMIN, LOGLAMMAX = 3.5818, 3.9633
-N_FEATURES = 512
-EPS = 0.0005
+N_FEATURES = 256
+EPS = 0.001
 N_VAL, N_TEST = 50000, 50000
 
 
