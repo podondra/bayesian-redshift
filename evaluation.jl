@@ -4,14 +4,13 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 364b618e-330c-4ae1-b70e-a8267028fee1
-using BSON, CUDA, FITSIO, Flux, Flux.Data, HDF5, Printf, Statistics, StatsPlots
-
 # ╔═╡ 6dc764b2-66e7-11eb-0833-9dc54a18f920
 begin
+	using BSON, CUDA, FITSIO, Flux, Flux.Data, HDF5, Printf, Statistics, StatsPlots
 	include("Evaluation.jl"); using .Evaluation
 	include("Neural.jl"); using .Neural
 	include("Utils.jl"); using .Utils
+	CUDA.versioninfo()
 end
 
 # ╔═╡ ed4d438e-6aaa-11eb-051e-efe644cce631
@@ -20,30 +19,30 @@ md"# Evaluation"
 # ╔═╡ 8643602a-66e9-11eb-3700-374047551428
 begin
 	dr12q_file = h5open("data/dr12q_superset.hdf5", "r")
-	id_validation = read(dr12q_file, "id_va")
-	X_train = gpu(read(dr12q_file, "X_tr"))
-	X_validation = gpu(read(dr12q_file, "X_va"))
-	y_train = read(dr12q_file, "z_vi_tr")
-	y_validation = read(dr12q_file, "z_vi_va")
+	id_va = read(dr12q_file, "id_va")
+	X_tr = gpu(read(dr12q_file, "X_tr"))
+	X_va = gpu(read(dr12q_file, "X_va"))
+	y_tr = read(dr12q_file, "z_vi_tr")
+	y_va = read(dr12q_file, "z_vi_va")
 	y_pipe = read(dr12q_file, "z_pipe_va")
 	close(dr12q_file)
-	size(X_train), size(X_validation)
+	size(X_tr), size(X_va)
 end
-
-# ╔═╡ 9bc66b89-d566-4335-a257-e228ff9d7e3e
-CUDA.versioninfo()
 
 # ╔═╡ 59c68c29-51c2-4cdd-9e74-567bc5a2cded
 md"## Pipeline Baseline"
 
 # ╔═╡ 06f9cf4e-e341-410a-83a4-4d6a5ea5576a
 begin
-	density(y_validation, label="Visual", xlabel="z", ylabel="Density")
+	density(y_va, label="Visual", xlabel="z", ylabel="Density")
 	density!(y_pipe, label="Pipeline")
 end
 
 # ╔═╡ 61d4b6de-5efa-400b-b4b0-cbccab2d9f6b
-Evaluation.rmse(y_validation, y_pipe), Evaluation.catastrophic_redshift_ratio(y_validation, y_pipe)
+Evaluation.rmse(y_va, y_pipe), Evaluation.cat_z_ratio(y_va, y_pipe)
+
+# ╔═╡ 19272ada-0111-4000-9c6a-f0f91a1973ff
+scatter(y_va, y_pipe, legend=:none, xlabel="Visual", ylabel="Pipeline")
 
 # ╔═╡ 646c8844-d25a-4453-a4d9-e6f6279c183b
 md"## Regression Model"
@@ -51,67 +50,59 @@ md"## Regression Model"
 # ╔═╡ edd6e898-6797-11eb-2cee-791764fb425a
 begin
 	Core.eval(Main, :(import Flux, NNlib))
-	model_reg = gpu(BSON.load("models/regression_model.bson")[:model])
-	ŷ_train_reg = cpu(Neural.regress(model_reg, X_train))
-	ŷ_validation_reg = cpu(Neural.regress(model_reg, X_validation))
+	model_reg = BSON.load("models/regression_model.bson")[:model] |> gpu
+	ŷ_tr_reg = Neural.regress(model_reg, X_tr) |> cpu
+	ŷ_va_reg = Neural.regress(model_reg, X_va) |> cpu
 	model_reg
 end
 
 # ╔═╡ d554d1f7-93d5-445a-8a74-ef9035bb2190
-Evaluation.rmse(y_train, ŷ_train_reg),
-Evaluation.catastrophic_redshift_ratio(y_train, ŷ_train_reg)
+Evaluation.rmse(y_tr, ŷ_tr_reg), Evaluation.cat_z_ratio(y_tr, ŷ_tr_reg)
 
 # ╔═╡ 7b0e34c6-67ba-11eb-2500-378603362df8
-Evaluation.rmse(y_validation, ŷ_validation_reg), Evaluation.catastrophic_redshift_ratio(y_validation, ŷ_validation_reg)
+Evaluation.rmse(y_va, ŷ_va_reg), Evaluation.cat_z_ratio(y_va, ŷ_va_reg)
 
 # ╔═╡ e6d5d6fa-6aab-11eb-0434-19c6a5a97099
 begin
-	density(y_validation, label="Visual", xlabel="z", ylabel="Density")
-	density!(ŷ_validation_reg, label="Model")
+	density(y_va, label="Visual", xlabel="z", ylabel="Density")
+	density!(ŷ_va_reg, label="Regression")
 end
 
 # ╔═╡ 5f25ed6f-ef8d-49c0-993d-e3d5c445fd99
-begin
-	scatter_model_reg = scatter(y_validation, ŷ_validation_reg, legend=:none)
-	scatter_pipe = scatter(y_validation, y_pipe, legend=:none)
-	plot(scatter_model_reg, scatter_pipe, layout=@layout [a b])
-end
+scatter(y_va, ŷ_va_reg, legend=:none, xlabel="Visual", ylabel="Regression")
 
 # ╔═╡ c05e8b4a-32d7-49b2-8a38-b7f040e1921c
 begin
-	threshold_range = 1000:10:5000
+	thresholds = 1000:10:5000
 	plot(
-		threshold_range,
-		[Evaluation.catastrophic_redshift_ratio(
-				y_validation, ŷ_validation_reg, threshold=t)
-			for t in threshold_range],
-		label="Model", xlabel="Δv", ylabel="Cat. z")
+		thresholds,
+		[Evaluation.cat_z_ratio(y_va, ŷ_va_reg, threshold=t) for t in thresholds],
+		label="Regression", xlabel="Δv", ylabel="Cat. z")
 	plot!(
-		threshold_range,
-		[Evaluation.catastrophic_redshift_ratio(y_validation, y_pipe, threshold=t) for t in threshold_range],
+		thresholds,
+		[Evaluation.cat_z_ratio(y_va, y_pipe, threshold=t) for t in thresholds],
 		label="Pipeline")
 end
 
 # ╔═╡ 1d52576a-6abb-11eb-2dd8-c388b2365ddd
 begin	
-	Δv_reg = Evaluation.compute_delta_v(y_validation, ŷ_validation_reg)
+	Δv_reg = Evaluation.compute_delta_v(y_va, ŷ_va_reg)
 	# random
-	i = rand(1:size(id_validation, 2))
+	i = rand(1:size(id_va, 2))
 	# cat. z
-	#i = rand((1:size(id_validation, 2))[Δv .> 3000])
+	i = rand((1:size(id_va, 2))[Δv_reg .> 3000])
 	# absolute error
-	#i = sortperm(abs.(y_validation - ŷ_validation))[end]
+	i = sortperm(abs.(y_va - ŷ_va_reg))[end]
 
-	z = y_validation[i]
-	ẑ = ŷ_validation_reg[i]
-	title = @sprintf "z = %.3f; ẑ = %.3f; Δv = %.3f" z ẑ Δv_reg[i]
-	Utils.plot_spectrum(X_validation[:, i], title=title, legend=:none)
-	Utils.plot_spectral_lines!(z)
-	prepared_spectrum = Utils.plot_spectral_lines!(ẑ, color=:red, location=:bottom)
-	loglam, flux = Utils.get_spectrum("Superset_DR12Q", id_validation[:, i]...)
-	original_spectrum = plot(10 .^ loglam, flux, legend=:none)
-	l = @layout [a; b]
-	plot(prepared_spectrum, original_spectrum, layout=l)
+	title_reg = @sprintf(
+		"z = %.3f; ẑ = %.3f; Δv = %.3f", y_va[i], ŷ_va_reg[i], Δv_reg[i])
+	Utils.plot_spectrum(X_va[:, i], title=title_reg, legend=:none)
+	Utils.plot_spectral_lines!(y_va[i])
+	prep_spec_reg = Utils.plot_spectral_lines!(
+		ŷ_va_reg[i], color=:red, location=:bottom)
+	orig_spec_reg = plot(
+		Utils.get_spectrum("Superset_DR12Q", id_va[:, i]...)..., legend=:none)
+	plot(prep_spec_reg, orig_spec_reg, layout=@layout [a; b])
 end
 
 # ╔═╡ c9c00f77-4f40-445c-b348-70754dfce19c
@@ -120,29 +111,46 @@ md"## Classification Model"
 # ╔═╡ cd79f25b-36e0-463a-80b6-ebc622aa75d2
 begin
 	Core.eval(Main, :(import Flux, NNlib))
-	model_clf = gpu(BSON.load("models/classification_model.bson")[:model])
-	ŷ_train_clf = cpu(Neural.classify(model_clf, X_train))
-	ŷ_validation_clf = cpu(Neural.classify(model_clf, X_validation))
+	model_clf = BSON.load("models/classification_model.bson")[:model] |> gpu
+	ŷ_tr_clf = Neural.classify(model_clf, X_tr) |> cpu
+	ŷ_va_clf = Neural.classify(model_clf, X_va) |> cpu
 	model_clf
 end
 
 # ╔═╡ e1d4a0f3-e1cb-4576-ae6a-97e735438236
-Evaluation.rmse(y_train, ŷ_train_clf),
-Evaluation.catastrophic_redshift_ratio(y_train, ŷ_train_clf)
+Evaluation.rmse(y_tr, ŷ_tr_clf), Evaluation.cat_z_ratio(y_tr, ŷ_tr_clf)
 
 # ╔═╡ f8ec4620-fc02-4dca-b005-0961de8ed1af
-Evaluation.rmse(y_validation, ŷ_validation_clf), Evaluation.catastrophic_redshift_ratio(y_validation, ŷ_validation_clf)
+Evaluation.rmse(y_va, ŷ_va_clf), Evaluation.cat_z_ratio(y_va, ŷ_va_clf)
 
 # ╔═╡ e1ada0e9-c547-4642-92e6-71a8ef1ce5ad
 begin
-	density(y_validation, label="Visual", xlabel="z", ylabel="Density")
-	density!(ŷ_validation_clf, label="Model")
+	density(y_va, label="Visual", xlabel="z", ylabel="Density")
+	density!(ŷ_va_clf, label="Classification")
 end
 
 # ╔═╡ 8d64cf38-8af9-4b35-89b2-daa60fdab019
-begin
-	scatter_model_clf = scatter(y_validation, ŷ_validation_clf, legend=:none)
-	plot(scatter_model_reg, scatter_pipe, layout=@layout [a b])
+scatter(y_va, ŷ_va_clf, legend=:none, xlabel="Visual", ylabel="Classification")
+
+# ╔═╡ 6cee541a-89a7-40fe-8567-ed6c9fa80fea
+begin	
+	Δv_clf = Evaluation.compute_delta_v(y_va, ŷ_va_clf)
+	# random
+	j = rand(1:size(id_va, 2))
+	# cat. z
+	j = rand((1:size(id_va, 2))[Δv_clf .> 3000])
+	# absolute error
+	#j = sortperm(abs.(y_va - ŷ_va_clf))[end]
+
+	title_clf = @sprintf(
+		"z = %.3f; ẑ = %.3f; Δv = %.3f", y_va[j], ŷ_va_clf[j], Δv_clf[j])
+	Utils.plot_spectrum(X_va[:, j], title=title_clf, legend=:none)
+	Utils.plot_spectral_lines!(y_va[j])
+	prep_spec_clf = Utils.plot_spectral_lines!(
+		ŷ_va_clf[j], color=:red, location=:bottom)
+	loglam_clf, flux_clf = Utils.get_spectrum("Superset_DR12Q", id_va[:, j]...)
+	orig_spec_clf = plot(10 .^ loglam_clf, flux_clf, legend=:none)
+	plot(prep_spec_clf, orig_spec_clf, layout=@layout [a; b])
 end
 
 # ╔═╡ fe9a448e-fc02-4d70-b12b-954cdf472849
@@ -165,62 +173,54 @@ end
 # ╔═╡ 08c367cc-3c81-450c-97c5-96c6b80c7a0f
 begin
 	Core.eval(Main, :(import Flux, NNlib))
-	model_bayes = gpu(BSON.load("models/bayesian_model.bson")[:model])
-	ŷ_train_bayes, σ_train = cpu(point_estimate(model_bayes, X_train))
-	ŷ_validation_bayes, σ_validation = cpu(point_estimate(model_bayes, X_validation))
+	model_bayes = BSON.load("models/bayesian_model.bson")[:model] |> gpu
+	ŷ_tr_bayes, σ_tr = point_estimate(model_bayes, X_tr) |> cpu 
+	ŷ_va_bayes, σ_va = point_estimate(model_bayes, X_va) |> cpu
 	model_bayes
 end
 
 # ╔═╡ 895d5f6b-88e6-4fa9-a9d9-0516e27fe30c
-Evaluation.rmse(y_train, ŷ_train_bayes),
-Evaluation.catastrophic_redshift_ratio(y_train, ŷ_train_bayes)
+Evaluation.rmse(y_tr, ŷ_tr_bayes), Evaluation.cat_z_ratio(y_tr, ŷ_tr_bayes)
 
 # ╔═╡ 4d920462-4f1f-47a6-b0b1-dd3a656251c9
-Evaluation.rmse(y_validation, ŷ_validation_bayes), Evaluation.catastrophic_redshift_ratio(y_validation, ŷ_validation_bayes)
+Evaluation.rmse(y_va, ŷ_va_bayes), Evaluation.cat_z_ratio(y_va, ŷ_va_bayes)
 
 # ╔═╡ a8c710e6-6ac8-11eb-3f00-5d2b72864754
 begin
-	ŷ_error_bayes = y_validation - ŷ_validation_bayes
-	cor(abs.(ŷ_error_bayes), σ_validation)
+	ŷ_error_bayes = y_va - ŷ_va_bayes
+	cor(abs.(ŷ_error_bayes), σ_va)
 end
 
 # ╔═╡ e396f046-71ce-11eb-1564-03d296917d94
-histogram(σ_validation, xlabel="σ", ylabel="Density", label=:none)
+histogram(σ_va, xlabel="σ", ylabel="Density", label=:none)
 
 # ╔═╡ 92142f12-6acd-11eb-32c9-9f33783e75f4
-σ_range = 0:0.001:maximum(σ_validation)
+σs = 0:0.001:maximum(σ_va)
 
 # ╔═╡ c93ef038-6acc-11eb-2e6e-298f7178eb89
 plot(
-	σ_range,
-	[Evaluation.rmse(y_validation[σ_validation .< σ],
-	 ŷ_validation_bayes[σ_validation .< σ]) for σ in σ_range],
+	σs,	[Evaluation.rmse(y_va[σ_va .< σ], ŷ_va_bayes[σ_va .< σ]) for σ in σs],
 	ylabel="RMSE", xlabel="σ", label=:none)
 
 # ╔═╡ bf58926c-6acd-11eb-3c23-bde13af4bfc2
 begin
 	plot(
-		σ_range,
-		[sum(σ_validation .< σ) / length(σ_validation) for σ in σ_range],
+		σs, [sum(σ_va .< σ) / length(σ_va) for σ in σs],
 		label="Completeness", xlabel="σ")
 	plot!(
-		σ_range,
-		[Evaluation.catastrophic_redshift_ratio(
-				y_validation[σ_validation .< σ],
-				ŷ_validation_bayes[σ_validation .< σ])
-			for σ in σ_range],
+		σs,
+		[Evaluation.cat_z_ratio(y_va[σ_va .< σ], ŷ_va_bayes[σ_va .< σ]) for σ in σs],
 		label="Catastrophic z Ratio", xlabel="σ")
 end
 
 # ╔═╡ Cell order:
 # ╟─ed4d438e-6aaa-11eb-051e-efe644cce631
-# ╠═364b618e-330c-4ae1-b70e-a8267028fee1
 # ╠═6dc764b2-66e7-11eb-0833-9dc54a18f920
 # ╠═8643602a-66e9-11eb-3700-374047551428
-# ╠═9bc66b89-d566-4335-a257-e228ff9d7e3e
 # ╟─59c68c29-51c2-4cdd-9e74-567bc5a2cded
 # ╠═06f9cf4e-e341-410a-83a4-4d6a5ea5576a
 # ╠═61d4b6de-5efa-400b-b4b0-cbccab2d9f6b
+# ╠═19272ada-0111-4000-9c6a-f0f91a1973ff
 # ╟─646c8844-d25a-4453-a4d9-e6f6279c183b
 # ╠═edd6e898-6797-11eb-2cee-791764fb425a
 # ╠═d554d1f7-93d5-445a-8a74-ef9035bb2190
@@ -235,6 +235,7 @@ end
 # ╠═f8ec4620-fc02-4dca-b005-0961de8ed1af
 # ╠═e1ada0e9-c547-4642-92e6-71a8ef1ce5ad
 # ╠═8d64cf38-8af9-4b35-89b2-daa60fdab019
+# ╠═6cee541a-89a7-40fe-8567-ed6c9fa80fea
 # ╟─fe9a448e-fc02-4d70-b12b-954cdf472849
 # ╠═92607376-6ac1-11eb-3620-1ff033ef6890
 # ╠═08c367cc-3c81-450c-97c5-96c6b80c7a0f

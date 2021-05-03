@@ -156,7 +156,7 @@ Evaluation.rmse(t_va, y_va)
 md"$\Delta v = c \frac{|z - z_\mathrm{VI}|}{1 + z_\mathrm{VI}}$"
 
 # ╔═╡ 2af527c4-4da5-11eb-114a-7fb9772594b3
-Evaluation.catastrophic_redshift_ratio(t_va, y_va)
+Evaluation.cat_z_ratio(t_va, y_va)
 
 # ╔═╡ c1424a2e-4060-11eb-25f0-91259901fbfb
 md"## Bayesian Linear Regression
@@ -314,12 +314,12 @@ y_va_std = sqrt.([1 / β + Φ_va[i, :]' * S * Φ_va[i, :] for i = 1:N_va])
 histogram(y_va_std, legend=:none)
 
 # ╔═╡ d3e4554a-4da9-11eb-3975-b526831e612d
-Evaluation.catastrophic_redshift_ratio(t_va, y_va_bayes)
+Evaluation.cat_z_ratio(t_va, y_va_bayes)
 
 # ╔═╡ be5f3988-4da9-11eb-06b2-5767b9f52edd
 begin
 	idx = y_va_std .< 1.001
-	sum(idx), Evaluation.catastrophic_redshift_ratio(t_va[idx], y_va_bayes[idx])
+	sum(idx), Evaluation.cat_z_ratio(t_va[idx], y_va_bayes[idx])
 end
 
 # ╔═╡ Cell order:

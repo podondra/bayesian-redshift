@@ -1,6 +1,6 @@
 module Evaluation
 
-export rmse, catastrophic_redshift_ratio, compute_delta_v
+export rmse, cat_z_ratio, compute_delta_v
 
 function rmse(t, y)
     sqrt(1 / length(t) * (t - y)'  * (t - y))
@@ -12,7 +12,7 @@ function compute_delta_v(z_vi, z)
     c .* abs.(z - z_vi) ./ (1 .+ z_vi)
 end
 
-function catastrophic_redshift_ratio(t, y; threshold=3000)
+function cat_z_ratio(t, y; threshold=3000)
     sum(compute_delta_v(t, y) .> threshold) / length(t)
 end
 

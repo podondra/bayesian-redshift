@@ -41,13 +41,16 @@ end
 function classification_model()
     Chain(
         Flux.unsqueeze(2),
-        Conv((3, ), 1 => 16, relu, pad=SamePad()),
+        Conv((3, ), 1 => 8, relu, pad=SamePad()),
+        Dropout(0.5),
         MaxPool((2, )),
-        Conv((3, ), 16 => 32, relu, pad=SamePad()),
+        Conv((3, ), 8 => 16, relu, pad=SamePad()),
+        Dropout(0.5),
         MaxPool((2, )),
         flatten,
-        Dense(2048, 2048, relu),
-        Dense(2048, 599))
+        Dense(1024, 1024, relu),
+        Dropout(0.5),
+        Dense(1024, 599))
 end
 
 function bayesian_model()
@@ -105,8 +108,8 @@ function train_with_early_stopping!(
         model, X_train, y_train_encoded, y_train, X_validation, y_validation;
         loss, predict, batchsize, patience, weight_decay, device, file_model)
     model = model |> device
-    X_train, y_train_encoded, y_train = X_train |> device, y_train_encoded |> device, y_train |> device
-    X_validation, y_validation = X_validation |> device, y_validation |> device
+    X_train, y_train_encoded = X_train |> device, y_train_encoded |> device
+    X_validation = X_validation |> device
 
     loader_train = DataLoader((X_train, y_train_encoded), batchsize=batchsize, shuffle=true)
 
@@ -122,14 +125,14 @@ function train_with_early_stopping!(
         Flux.train!(loss_function, Θ, loader_train, optimizer)
         epoch += 1
 
-        ŷ_train = predict(model, X_train) |> device
-        ŷ_validation = predict(model, X_validation) |> device
+        ŷ_train = predict(model, X_train)
+        ŷ_validation = predict(model, X_validation)
 
         rmse_train = rmse(y_train, ŷ_train)
         rmse_validation = rmse(y_validation, ŷ_validation)
         @info "rmse" train=rmse_train validation=rmse_validation
-        catz_train = catastrophic_redshift_ratio(y_train, ŷ_train)
-        catz_validation = catastrophic_redshift_ratio(y_validation, ŷ_validation)
+        catz_train = cat_z_ratio(y_train, ŷ_train)
+        catz_validation = cat_z_ratio(y_validation, ŷ_validation)
         @info "catastrophic z ratio" train=catz_train validation=catz_validation
 
         if catz_validation < catz_validation_star
