@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --partition=cpufast --time=4:00:00
+#SBATCH --partition=cpu --time=24:00:00
 #SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=16
 #SBATCH --mem=128G
 #SBATCH --job-name=dr16q_superset_extr --output=misc/dr16q_superset_extr.out

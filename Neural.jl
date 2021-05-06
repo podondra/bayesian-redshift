@@ -101,6 +101,7 @@ end
 
 function classify(model, X)
     loader = DataLoader(X, batchsize=2048)
+    # TODO LABELS should be an array of Float32
     return parse.(Float32, reduce(vcat, [Flux.onecold(model(x), LABELS) for x in loader]))
 end
 
@@ -156,7 +157,7 @@ function train_wrapper_regression!(model, model_name; bs=256, wd=0)
     end
 end
 
-function train_wrapper_classification!(model, model_name; bs=256, wd=0)
+function train_wrapper_classification!(model, model_name; bs=256, wd=1e-3)
     logger = TBLogger("runs/" * model_name, tb_overwrite)
     with_logger(logger) do
         train_with_early_stopping!(

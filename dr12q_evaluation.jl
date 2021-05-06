@@ -6,7 +6,7 @@ using InteractiveUtils
 
 # ╔═╡ 6dc764b2-66e7-11eb-0833-9dc54a18f920
 begin
-	using BSON, CUDA, FITSIO, Flux, Flux.Data, HDF5, Printf, Statistics, StatsPlots
+	using BSON, CUDA, FITSIO, Flux, Flux.Data, HDF5, Printf, Statistics, StatsBase, StatsPlots
 	include("Evaluation.jl"); using .Evaluation
 	include("Neural.jl"); using .Neural
 	include("Utils.jl"); using .Utils
@@ -20,8 +20,8 @@ md"# Evaluation"
 begin
 	dr12q_file = h5open("data/dr12q_superset.hdf5", "r")
 	id_va = read(dr12q_file, "id_va")
-	X_tr = gpu(read(dr12q_file, "X_tr"))
-	X_va = gpu(read(dr12q_file, "X_va"))
+	X_tr = read(dr12q_file, "X_tr") |> gpu
+	X_va = read(dr12q_file, "X_va") |> gpu
 	y_tr = read(dr12q_file, "z_vi_tr")
 	y_va = read(dr12q_file, "z_vi_va")
 	y_pipe = read(dr12q_file, "z_pipe_va")
@@ -133,7 +133,7 @@ end
 scatter(y_va, ŷ_va_clf, legend=:none, xlabel="Visual", ylabel="Classification")
 
 # ╔═╡ 6cee541a-89a7-40fe-8567-ed6c9fa80fea
-begin	
+begin
 	Δv_clf = Evaluation.compute_delta_v(y_va, ŷ_va_clf)
 	# random
 	j = rand(1:size(id_va, 2))
@@ -154,7 +154,7 @@ begin
 end
 
 # ╔═╡ fe9a448e-fc02-4d70-b12b-954cdf472849
-md"## Bayesian Model
+md"## Bayesian Regression Model
 
 > Drawing a new function for each test point makes no difference if all we care about is obtaining the predictive mean and predictive variance
 > (actually, for these two quantities this process is preferable to the one I will describe below),
@@ -174,7 +174,7 @@ end
 begin
 	Core.eval(Main, :(import Flux, NNlib))
 	model_bayes = BSON.load("models/bayesian_model.bson")[:model] |> gpu
-	ŷ_tr_bayes, σ_tr = point_estimate(model_bayes, X_tr) |> cpu 
+	ŷ_tr_bayes, σ_tr = point_estimate(model_bayes, X_tr) |> cpu
 	ŷ_va_bayes, σ_va = point_estimate(model_bayes, X_va) |> cpu
 	model_bayes
 end
@@ -192,7 +192,7 @@ begin
 end
 
 # ╔═╡ e396f046-71ce-11eb-1564-03d296917d94
-histogram(σ_va, xlabel="σ", ylabel="Density", label=:none)
+histogram(σ_va, xlabel="σ", ylabel="Count", label=:none)
 
 # ╔═╡ 92142f12-6acd-11eb-32c9-9f33783e75f4
 σs = 0:0.001:maximum(σ_va)
@@ -211,6 +211,47 @@ begin
 		σs,
 		[Evaluation.cat_z_ratio(y_va[σ_va .< σ], ŷ_va_bayes[σ_va .< σ]) for σ in σs],
 		label="Catastrophic z Ratio", xlabel="σ")
+end
+
+# ╔═╡ 02c2ae29-6949-4de4-80a7-59223bd2233c
+md"## Bayesian Classification Model"
+
+# ╔═╡ d0fe4d01-006a-451e-ad4d-558b0136a368
+md"### Variation Ratio"
+
+# ╔═╡ daee4dfd-83d1-40be-a8b1-35bfed361c3c
+begin
+	trainmode!(model_clf)
+	batch_size = 256
+	ŷ_va = zeros(size(X_va, 2))
+	variation_ratios = zeros(size(X_va, 2))
+	for idx in 1:size(X_va, 2)
+		output = model_clf(X_va[:, [idx for i in 1:batch_size]]) |> cpu
+		ŷ_va[idx] = findmax(countmap(Flux.onecold(output, 0.0f0:0.01f0:5.98f0)))[2]
+		variation_ratios[idx] = 1 - maximum(proportions(Flux.onecold(output)))
+	end
+	Evaluation.rmse(y_va, ŷ_va), Evaluation.cat_z_ratio(y_va, ŷ_va)
+end
+
+# ╔═╡ 04bfd3c5-f876-4b69-b992-6719f07fc86d
+histogram(variation_ratios, xlabel="Variation Ratio", ylabel="Count", label=:none)
+
+# ╔═╡ 92e96e12-a833-48c1-b700-b2d36f5f9fa4
+ts = 0:0.001:1
+
+# ╔═╡ 2cbbbc35-fef9-4475-b7e9-8356d4d30c14
+plot(ts, [Evaluation.rmse(y_va[variation_ratios .< t], ŷ_va[variation_ratios .< t]) for t in ts], ylabel="RMSE", xlabel="Threshold", label=:none)
+
+# ╔═╡ 98759103-0f1f-4e39-9c1f-f162979645cf
+begin
+	plot(
+		plot(
+			ts, [sum(variation_ratios .< t) / length(variation_ratios) for t in ts],
+			label="Completeness", xlabel="Threshold"),
+		plot(
+			ts, [Evaluation.cat_z_ratio(y_va[variation_ratios .< t], ŷ_va[variation_ratios .< t]) for t in ts],
+			label="Catastrophic z Ratio", xlabel="Threshold"),
+		layout=@layout [a; b])
 end
 
 # ╔═╡ Cell order:
@@ -246,3 +287,10 @@ end
 # ╠═92142f12-6acd-11eb-32c9-9f33783e75f4
 # ╠═c93ef038-6acc-11eb-2e6e-298f7178eb89
 # ╠═bf58926c-6acd-11eb-3c23-bde13af4bfc2
+# ╟─02c2ae29-6949-4de4-80a7-59223bd2233c
+# ╟─d0fe4d01-006a-451e-ad4d-558b0136a368
+# ╠═daee4dfd-83d1-40be-a8b1-35bfed361c3c
+# ╠═04bfd3c5-f876-4b69-b992-6719f07fc86d
+# ╠═92e96e12-a833-48c1-b700-b2d36f5f9fa4
+# ╠═2cbbbc35-fef9-4475-b7e9-8356d4d30c14
+# ╠═98759103-0f1f-4e39-9c1f-f162979645cf
