@@ -219,9 +219,11 @@ md"## Bayesian Classification Model"
 # ╔═╡ d0fe4d01-006a-451e-ad4d-558b0136a368
 md"### Variation Ratio"
 
+# ╔═╡ f868b2a1-bb4c-481e-bc68-cd7cf6014645
+trainmode!(model_clf)
+
 # ╔═╡ daee4dfd-83d1-40be-a8b1-35bfed361c3c
 begin
-	trainmode!(model_clf)
 	batch_size = 256
 	ŷ_va = zeros(size(X_va, 2))
 	variation_ratios = zeros(size(X_va, 2))
@@ -237,7 +239,7 @@ end
 histogram(variation_ratios, xlabel="Variation Ratio", ylabel="Count", label=:none)
 
 # ╔═╡ 92e96e12-a833-48c1-b700-b2d36f5f9fa4
-ts = 0:0.001:1
+ts = 0:0.001:4
 
 # ╔═╡ 2cbbbc35-fef9-4475-b7e9-8356d4d30c14
 plot(ts, [Evaluation.rmse(y_va[variation_ratios .< t], ŷ_va[variation_ratios .< t]) for t in ts], ylabel="RMSE", xlabel="Threshold", label=:none)
@@ -250,6 +252,53 @@ begin
 			label="Completeness", xlabel="Threshold"),
 		plot(
 			ts, [Evaluation.cat_z_ratio(y_va[variation_ratios .< t], ŷ_va[variation_ratios .< t]) for t in ts],
+			label="Catastrophic z Ratio", xlabel="Threshold"),
+		layout=@layout [a; b])
+end
+
+# ╔═╡ 7cb3bdf3-4ab3-4ece-a9bd-a1e11808ce8a
+md"### Predictive Entropy & Mutual Information"
+
+# ╔═╡ 4af6d3d7-bd4f-4aca-bff5-5b90a54ab619
+begin
+	trainmode!(model_clf)
+	entropies = zeros(size(X_va, 2))
+	mutual_infos = zeros(size(X_va, 2))
+	for idx in 1:size(X_va, 2)
+		output = softmax(model_clf(X_va[:, [idx for i in 1:batch_size]]) |> cpu)
+		foo = mean(output, dims=2)
+		entropies[idx] = -sum(foo .* log.(foo .+ eps(Float32)))
+		mutual_infos[idx] = entropies[idx] + sum(output .* log.(output .+ eps(Float32))) / batch_size
+	end
+	entropies, mutual_infos
+end
+
+# ╔═╡ d38e1b7a-40d7-46af-ac0e-e9ac6f6531e2
+histogram(entropies)
+
+# ╔═╡ 81761efd-c26c-45cc-a4c4-d853469a7824
+histogram(mutual_infos)
+
+# ╔═╡ c1a12c71-3047-4ae5-9d2b-3169be042b31
+plot(
+	ts,
+	[Evaluation.rmse(y_va[entropies .< t], ŷ_va_clf[entropies .< t]) for t in ts],
+	ylabel="RMSE", xlabel="Threshold", label=:none)
+
+# ╔═╡ 2596f8a7-15c0-4023-9b2f-48a11496d237
+plot(
+	ts,
+	[Evaluation.rmse(y_va[mutual_infos .< t], ŷ_va_clf[mutual_infos .< t]) for t in ts],
+	ylabel="RMSE", xlabel="Threshold", label=:none)
+
+# ╔═╡ 9ba41857-37cb-4b7b-9835-6e2a7f16f189
+begin
+	plot(
+		plot(
+			ts, [sum(mutual_infos .< t) / length(mutual_infos) for t in ts],
+			label="Completeness", xlabel="Threshold"),
+		plot(
+			ts, [Evaluation.cat_z_ratio(y_va[mutual_infos .< t], ŷ_va_clf[mutual_infos .< t]) for t in ts],
 			label="Catastrophic z Ratio", xlabel="Threshold"),
 		layout=@layout [a; b])
 end
@@ -289,8 +338,16 @@ end
 # ╠═bf58926c-6acd-11eb-3c23-bde13af4bfc2
 # ╟─02c2ae29-6949-4de4-80a7-59223bd2233c
 # ╟─d0fe4d01-006a-451e-ad4d-558b0136a368
+# ╠═f868b2a1-bb4c-481e-bc68-cd7cf6014645
 # ╠═daee4dfd-83d1-40be-a8b1-35bfed361c3c
 # ╠═04bfd3c5-f876-4b69-b992-6719f07fc86d
 # ╠═92e96e12-a833-48c1-b700-b2d36f5f9fa4
 # ╠═2cbbbc35-fef9-4475-b7e9-8356d4d30c14
 # ╠═98759103-0f1f-4e39-9c1f-f162979645cf
+# ╟─7cb3bdf3-4ab3-4ece-a9bd-a1e11808ce8a
+# ╠═4af6d3d7-bd4f-4aca-bff5-5b90a54ab619
+# ╠═d38e1b7a-40d7-46af-ac0e-e9ac6f6531e2
+# ╠═81761efd-c26c-45cc-a4c4-d853469a7824
+# ╠═c1a12c71-3047-4ae5-9d2b-3169be042b31
+# ╠═2596f8a7-15c0-4023-9b2f-48a11496d237
+# ╠═9ba41857-37cb-4b7b-9835-6e2a7f16f189
