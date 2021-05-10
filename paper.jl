@@ -4,6 +4,9 @@
 using Markdown
 using InteractiveUtils
 
+# ╔═╡ 7ea4b94b-f8f0-4eb4-a8cf-e105e67976a6
+using DataFrames, FITSIO, Statistics, StatsPlots
+
 # ╔═╡ 5c7adecc-aefa-11eb-2bb5-f5778d7edcb2
 md"# Prediction of Spectroscopic Redshift with a Bayesian Convolutional Network
 
@@ -49,9 +52,90 @@ While it is reasonable to omit batch normalization from the very first baseline,
 
 ### SDSS DR12Q & DR16Q Data
 
-Data are SDSS DR12Q and DR16Q to verify generalisation.
+Data are SDSS DR12Q superset and SDSS DR16Q superset to verify generalisation.
 
-### Data Preparation
+SDSS DR12Q catalogue is the final catalogue of QSOs from the Baryon Oscillation Spectroscopi Survey (BOSS) of SDSS-III.
+The corresponding superset catalogue includes:
+\"Spectra of all the SDSS-III/BOSS quasar candidates, all the SDSS-III quasar targets from ancillary programs and all the objects classified robustly as $z \ge 2$ quasars by the SDSS pipeline (Bolton et al. 2012) among the galaxy targets (Reid et al. 2016) have been visually inspected.\"
+The superset catalogue is suitable for machine learning due to the visual inspected of all spectra.
+\"If the pipeline redshift does not need to be modified, the SDSS pipeline redshift (`Z_PIPE`) and the visual inspection redshift (`Z_VI`) are identical. If not, the redshift is set by eye with an accuracy that cannot be better than $\Delta z \sim 0.003$.\"
+SDSS DR12Q superset contains 546856 objects.
+`Z_CONF_PERSON` refers to level of confidence for the redshift associated to each object.
+Where `Z_CONF_PERSON` is equal to 3 then the redshift is not uncertain.
+Final DR12Q catalogue contains a total of 297301 unique QSOs.
+
+TODO SDSS DR16Q catalogue
+
+From the 546856 spectra in DR12Q superset, we selected only those with $z > -1$, `Z_CONF_PERSON` equal to 3 and with wavelength coverage in range 3830.01–9084.48 Å (or 3.5832–3.9583 Å in logarithmic wavelengths).
+The wavelength coverage range is selected based on the SDSS DR16Q superset coverage because we want to show the generalisation power of our machine learning model.
+We selected the minimal wavelength to be the 99.9 quantile (3830.01 Å) of all minimal wavelengths and the maximal wavelength to be the 0.01 quantile (9084.48 Å) of all maximal wavelength in the DR16Q catalogue.
+The wavelength range in the DR16Q catalogue gives 1437742 out of 1440615 (2873 lost).
+"
+
+# ╔═╡ c4c54574-dd08-49bb-8f7b-0ffcf45a02ee
+begin
+	dr16q_superset_fits = FITS("data/DR16Q_Superset_v3.fits")
+	dr16q_superset = DataFrame(
+		plate=read(dr16q_superset_fits[2], "PLATE"),
+		mjd=read(dr16q_superset_fits[2], "MJD"),
+		fiberid=read(dr16q_superset_fits[2], "FIBERID"),
+		z=read(dr16q_superset_fits[2], "Z"))
+	dr16q_specobj_fits = FITS("data/specObj-dr16.fits")
+	dr16q_specobj = DataFrame(
+		plate=read(dr16q_specobj_fits[2], "PLATE"),
+		mjd=read(dr16q_specobj_fits[2], "MJD"),
+		fiberid=read(dr16q_specobj_fits[2], "FIBERID"),
+		wavemin=read(dr16q_specobj_fits[2], "WAVEMIN"),
+		wavemax=read(dr16q_specobj_fits[2], "WAVEMAX"))
+	dr16q_waves = leftjoin(dr16q_superset, dr16q_specobj, on=[:plate, :mjd, :fiberid])
+	dropmissing!(dr16q_waves, [:wavemin, :wavemax])
+	wavemin = quantile(dr16q_waves[:wavemin], 0.999)
+	wavemax = quantile(dr16q_waves[:wavemax], 0.001)
+	wavemin, wavemax, log10(wavemin), log10(wavemax)
+end
+
+# ╔═╡ 059448cb-e6c5-4a6a-9dfb-f5a51c4c3dea
+begin
+	dr12q_superset_fits = FITS("data/Superset_DR12Q.fits")
+	dr12q_superset = DataFrame(
+		plate=read(dr12q_superset_fits[2], "PLATE"),
+		mjd=read(dr12q_superset_fits[2], "MJD"),
+		fiberid=read(dr12q_superset_fits[2], "FIBERID"),
+		z_vi=read(dr12q_superset_fits[2], "Z_VI"),
+		z_conf_person=read(dr12q_superset_fits[2], "Z_CONF_PERSON"))
+	dr12q_specobj_fits = FITS("data/specObj-dr12.fits")
+	dr12q_specobj = DataFrame(
+		plate=read(dr12q_specobj_fits[2], "PLATE"),
+		mjd=read(dr12q_specobj_fits[2], "MJD"),
+		fiberid=read(dr12q_specobj_fits[2], "FIBERID"),
+		wavemin=read(dr12q_specobj_fits[2], "WAVEMIN"),
+		wavemax=read(dr12q_specobj_fits[2], "WAVEMAX"))
+	dr12q_gt_minus_one_idx = -1.0 .< dr12q_superset[:z_vi]
+	dr12q_z_conf_idx = dr12q_superset[:z_conf_person] .== 3
+	dr12q_waves = leftjoin(dr12q_superset, dr12q_specobj, on=[:plate, :mjd, :fiberid])
+	dr12q_wave_idx = ((dr12q_waves[:wavemin] .<= 10 ^ 3.5832)
+		.& (10 ^ 3.9583 .<= dr12q_waves[:wavemax]))
+	dr12q_subset = dr12q_waves[
+		dr12q_gt_minus_one_idx .& dr12q_z_conf_idx .& dr12q_wave_idx, :]
+	size(dr12q_superset, 1), size(dr12q_subset, 1)
+end
+
+# ╔═╡ 156df393-e44c-4981-b4fb-e56a83e0292a
+begin
+	dr16q_wave_idx = ((dr16q_waves[:wavemin] .<= wavemin)
+		.& (dr16q_waves[:wavemax] .>= wavemax))
+	dr16q_subset = dr16q_waves[dr16q_wave_idx, :]
+	size(dr16q_superset, 1), size(dr16q_subset, 1)
+end
+
+# ╔═╡ a77d68ac-6d47-468a-a00f-52ff8df61d72
+begin
+	@df dr12q_subset histogram(:z_vi, xlabel="z", ylabel="Count", label="DR12Q")
+	@df dr16q_superset[dr16q_superset[:z] .> -1, :] histogram!(:z, label="DR16Q")
+end
+
+# ╔═╡ ada2d063-1629-4ce0-a28c-ece36bf7f41b
+md"### Data Preparation
 
 Data preparation consists of continuum normalisation and resampling.
 
@@ -64,7 +148,7 @@ Velocity difference $\Delta v = c \cdot \frac{|\hat{z} - z|}{1 + z}$ and median 
 Ratio of catastrophic failures: $\Delta v >  3000 \mbox{ km s}^{-1}$. (Lyke et al., 2020)
 
 Baseline predictions and model to compare to:
-- pipeline (see column `Z_PIPE` in catalogues);
+- pipeline (see column `Z_PIPE` in catalogues and Bolton et al. 2012);
 - QuasarNet (column `Z_QN` in DR16Q catologue);
 - [redvsblue](https://github.com/londumas/redvsblue) (`Z_PCA` in DR16Q): probably an unsupervised technique to improve given estimate (prior, i.e. `Z_PIPE`).
 
@@ -93,7 +177,13 @@ In future research, we plan to use the uncertainty in active learning to further
 
 # ╔═╡ Cell order:
 # ╠═5c7adecc-aefa-11eb-2bb5-f5778d7edcb2
-# ╠═1a436fc9-d74a-441c-8125-1af54d17fe97
-# ╠═da123329-9d36-45cf-b743-3a333fa5bd11
-# ╠═1316241a-0a53-4db6-806c-685f20a38c7b
-# ╠═63738e8a-d4d0-47a4-a2a6-3990fac7463f
+# ╠═7ea4b94b-f8f0-4eb4-a8cf-e105e67976a6
+# ╟─1a436fc9-d74a-441c-8125-1af54d17fe97
+# ╟─da123329-9d36-45cf-b743-3a333fa5bd11
+# ╠═c4c54574-dd08-49bb-8f7b-0ffcf45a02ee
+# ╠═059448cb-e6c5-4a6a-9dfb-f5a51c4c3dea
+# ╠═156df393-e44c-4981-b4fb-e56a83e0292a
+# ╠═a77d68ac-6d47-468a-a00f-52ff8df61d72
+# ╟─ada2d063-1629-4ce0-a28c-ece36bf7f41b
+# ╟─1316241a-0a53-4db6-806c-685f20a38c7b
+# ╟─63738e8a-d4d0-47a4-a2a6-3990fac7463f
