@@ -45,18 +45,9 @@ md"> For objects that have a redshift in the columns `Z_VI` or `Z_10K` and a con
 > For analyses that require a homogeneous redshift over a large ensemble we recommend `Z_PCA`.
 > We ourselves use `Z_PCA in this paper as a redshift prior for calculating absolute i -band magnitudes, and for finding DLAs and BALs (§5)."
 
-# ╔═╡ c82279c0-5fcf-11eb-17b9-1136e2a2792d
-begin
-	# PIPE produces estimates smaller than 0
-	gt_minus_one_idx = -1 .< superset[:z]
-	sum(gt_minus_one_idx)
-end
-
-# ╔═╡ 50475460-5fd0-11eb-0ec7-7301438e4cd2
-subset = superset[gt_minus_one_idx, :]
-
 # ╔═╡ 282e7e62-5fd1-11eb-27ba-7d4d50fc1374
-@df subset histogram(:z, xlabel="z", ylabel="Count", legend=:none)
+@df superset[superset[:z] .> -1, :] histogram(
+	:z, xlabel="z", ylabel="Count", legend=:none)
 
 # ╔═╡ 868625f0-5fd1-11eb-00dd-1f68c388ceb6
 md"## Wavelength Range"
@@ -73,18 +64,18 @@ begin
 end
 
 # ╔═╡ 6cb7f21c-5fd2-11eb-324c-6755e1ad21db
-wave_subset = leftjoin(subset, specobj, on=[:plate, :mjd, :fiberid])
-
-# ╔═╡ ebad79d8-6148-11eb-20c6-e556e1e41fa3
-dropmissing!(wave_subset, [:wavemin, :wavemax])
+wave_subset = leftjoin(superset, specobj, on=[:plate, :mjd, :fiberid])
 
 # ╔═╡ 62db6500-6145-11eb-16e4-af95d069068e
 describe(wave_subset[[:wavemin, :wavemax]])
 
+# ╔═╡ ebad79d8-6148-11eb-20c6-e556e1e41fa3
+dropmissing!(wave_subset, [:wavemin, :wavemax])
+
 # ╔═╡ f9b6140a-6147-11eb-2b7c-4bdad13b9ace
 begin
-	wavemin = quantile(wave_subset[:wavemin], 0.99)
-	wavemax = quantile(wave_subset[:wavemax], 0.01)
+	wavemin = quantile(wave_subset[:wavemin], 0.999)
+	wavemax = quantile(wave_subset[:wavemax], 0.001)
 	logwavemin, logwavemax = log10(wavemin), log10(wavemax)
 	wavemin, wavemax, logwavemin, logwavemax
 end
@@ -96,17 +87,17 @@ begin
 end
 
 # ╔═╡ c8917b70-6148-11eb-038a-5d388d41b053
-final_subset = wave_subset[wave_idx, :]
+subset = wave_subset[wave_idx, :]
 
 # ╔═╡ c66ea292-614c-11eb-2bc7-675d0b185c03
 md"## HDF5"
 
 # ╔═╡ 1881c878-6b6d-11eb-2f91-e984e48285cc
 begin
-	id = Matrix{Int32}(undef, 3, size(final_subset, 1))
-	id[1, :] = final_subset[:plate]
-	id[2, :] = final_subset[:mjd]
-	id[3, :] = final_subset[:fiberid]
+	id = Matrix{Int32}(undef, 3, size(subset, 1))
+	id[1, :] = subset[:plate]
+	id[2, :] = subset[:mjd]
+	id[3, :] = subset[:fiberid]
 	id
 end
 
@@ -115,13 +106,13 @@ begin
 	# read-write, create file if not existing, preserve existing contents
 	fid = h5open("data/dr16q_superset.hdf5", "cw")
 	write_dataset(fid, "id", id)
-	write_dataset(fid, "z", convert(Vector{Float32}, final_subset[:z]))
-	write_dataset(fid, "source_z", final_subset[:source_z])
-	write_dataset(fid, "z_qn", convert(Vector{Float32}, final_subset[:z_qn]))
-	write_dataset(fid, "z_10k", convert(Vector{Float32}, final_subset[:z_10k]))
-	write_dataset(fid, "z_vi", convert(Vector{Float32}, final_subset[:z_vi]))
-	write_dataset(fid, "z_pipe", convert(Vector{Float32}, final_subset[:z_pipe]))
-	write_dataset(fid, "z_pca", convert(Vector{Float32}, final_subset[:z_pca]))
+	write_dataset(fid, "z", convert(Vector{Float32}, subset[:z]))
+	write_dataset(fid, "source_z", subset[:source_z])
+	write_dataset(fid, "z_qn", convert(Vector{Float32}, subset[:z_qn]))
+	write_dataset(fid, "z_10k", convert(Vector{Float32}, subset[:z_10k]))
+	write_dataset(fid, "z_vi", convert(Vector{Float32}, subset[:z_vi]))
+	write_dataset(fid, "z_pipe", convert(Vector{Float32}, subset[:z_pipe]))
+	write_dataset(fid, "z_pca", convert(Vector{Float32}, subset[:z_pca]))
 	close(fid)
 end
 
@@ -130,14 +121,12 @@ end
 # ╠═3621f840-5fcd-11eb-3be8-15ac4ab1b566
 # ╠═5e927e1c-5fcd-11eb-39cd-d19c696d924e
 # ╟─9e7bd468-5fcf-11eb-24d2-a349a471fc8e
-# ╠═c82279c0-5fcf-11eb-17b9-1136e2a2792d
-# ╠═50475460-5fd0-11eb-0ec7-7301438e4cd2
 # ╠═282e7e62-5fd1-11eb-27ba-7d4d50fc1374
 # ╟─868625f0-5fd1-11eb-00dd-1f68c388ceb6
 # ╠═86d7f01c-613c-11eb-111f-1d47ffe5dfd3
 # ╠═6cb7f21c-5fd2-11eb-324c-6755e1ad21db
-# ╠═ebad79d8-6148-11eb-20c6-e556e1e41fa3
 # ╠═62db6500-6145-11eb-16e4-af95d069068e
+# ╠═ebad79d8-6148-11eb-20c6-e556e1e41fa3
 # ╠═f9b6140a-6147-11eb-2b7c-4bdad13b9ace
 # ╠═6f90500a-6148-11eb-2645-61e9174bf9bd
 # ╠═c8917b70-6148-11eb-038a-5d388d41b053

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.3
+# v0.14.4
 
 using Markdown
 using InteractiveUtils
@@ -58,7 +58,7 @@ begin
 end
 
 # ╔═╡ 43f3be7c-aada-4e66-aee8-33abecabe7e8
-subset = superset[.~lt_zero_idx .& conf_z_idx, :]
+subset = superset[gt_minus_one_idx .& conf_z_idx, :]
 
 # ╔═╡ 1b6463ca-59ba-4cca-9186-3af9719e2313
 @df subset histogram(:z_vi, xlabel="z", ylabel="Count", legend=:none)
@@ -73,12 +73,12 @@ and `WAVEMAX` is 'Maximum observed (vacuum) wavelength (Angstroms)'"
 # ╔═╡ 3c9d8afd-e1e9-4cb4-8f5d-64dab93168e4
 begin
 	specobj_fits = FITS("data/specObj-dr12.fits")
-		specobj = DataFrame(
-			plate=read(specobj_fits[2], "PLATE"),
-			mjd=read(specobj_fits[2], "MJD"),
-			fiberid=read(specobj_fits[2], "FIBERID"),
-			wavemin=read(specobj_fits[2], "WAVEMIN"),
-			wavemax=read(specobj_fits[2], "WAVEMAX"))
+	specobj = DataFrame(
+		plate=read(specobj_fits[2], "PLATE"),
+		mjd=read(specobj_fits[2], "MJD"),
+		fiberid=read(specobj_fits[2], "FIBERID"),
+		wavemin=read(specobj_fits[2], "WAVEMIN"),
+		wavemax=read(specobj_fits[2], "WAVEMAX"))
 end
 
 # ╔═╡ cc76dfe5-9e7c-49ef-ab72-97afed20ccb7
@@ -101,7 +101,7 @@ end
 
 # ╔═╡ 36e49ea5-41a7-4034-ad58-1354288e0cf0
 begin
-	wave_idx = (wave_subset[:wavemin] .<= wavemin) .& (wavemax .<= wave_subset[:wavemax])
+	wave_idx = (wave_subset[:wavemin] .<= 10 ^ 3.5832) .& (10 ^ 3.9583 .<= wave_subset[:wavemax])
 	sum(wave_idx)
 end
 

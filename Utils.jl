@@ -8,7 +8,7 @@ export LOGLAMMIN, LOGLAMMAX, get_filepath, get_spectrum,
        plot_spectral_lines!, plot_spectrum, polynomial_features
 
 ε = 0.001
-LOGLAMMIN, LOGLAMMAX = 3.5818, 3.9633
+LOGLAMMIN, LOGLAMMAX = 3.5832, 3.9583
 N_FEATURES = 256
 LAMBDA = 10 .^ range(LOGLAMMIN + ε, LOGLAMMAX - ε, length=N_FEATURES)
 

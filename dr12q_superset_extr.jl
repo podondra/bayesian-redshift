@@ -13,7 +13,7 @@ import .Utils
     id = read(fid["id"])
     n = size(id, 2)
 
-    fluxes = Matrix{Float32}(undef, 3816, n)
+    fluxes = Matrix{Float32}(undef, 3752, n)
 
     Threads.@threads for i = 1:n
         loglam, flux = Utils.get_spectrum("Superset_DR12Q", id[:, i]...)
