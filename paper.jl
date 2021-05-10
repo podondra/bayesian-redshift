@@ -56,18 +56,23 @@ Data are SDSS DR12Q superset and SDSS DR16Q superset to verify generalisation.
 
 SDSS DR12Q catalogue is the final catalogue of QSOs from the Baryon Oscillation Spectroscopi Survey (BOSS) of SDSS-III.
 The corresponding superset catalogue includes:
-\"Spectra of all the SDSS-III/BOSS quasar candidates, all the SDSS-III quasar targets from ancillary programs and all the objects classified robustly as $z \ge 2$ quasars by the SDSS pipeline (Bolton et al. 2012) among the galaxy targets (Reid et al. 2016) have been visually inspected.\"
+\"Spectra of all the SDSS-III/BOSS quasar candidates, all the SDSS-III quasar targets from ancillary programs and all the objects classified robustly as ``z \ge 2`` quasars by the SDSS pipeline (Bolton et al. 2012) among the galaxy targets (Reid et al. 2016) have been visually inspected.\"
 The superset catalogue is suitable for machine learning due to the visual inspected of all spectra.
-\"If the pipeline redshift does not need to be modified, the SDSS pipeline redshift (`Z_PIPE`) and the visual inspection redshift (`Z_VI`) are identical. If not, the redshift is set by eye with an accuracy that cannot be better than $\Delta z \sim 0.003$.\"
+\"If the pipeline redshift does not need to be modified, the SDSS pipeline redshift (`Z_PIPE`) and the visual inspection redshift (`Z_VI`) are identical. If not, the redshift is set by eye with an accuracy that cannot be better than ``\Delta z \sim 0.003``.\"
 SDSS DR12Q superset contains 546856 objects.
 `Z_CONF_PERSON` refers to level of confidence for the redshift associated to each object.
 Where `Z_CONF_PERSON` is equal to 3 then the redshift is not uncertain.
 Final DR12Q catalogue contains a total of 297301 unique QSOs.
 
-TODO SDSS DR16Q catalogue
+SDSS DR16Q superset catalogue is the final SDSS-IV QSO catalogue of extended BOSS (eBOSS).
+The superset contains 1440615 spectra (observations).
+There are spectra visually inspected (320161 spectra) while the rest has automated identification and redshift.
+There should be 920110 observations of 750414 QSOs.
 
-From the 546856 spectra in DR12Q superset, we selected only those with $z > -1$, `Z_CONF_PERSON` equal to 3 and with wavelength coverage in range 3830.01–9084.48 Å (or 3.5832–3.9583 Å in logarithmic wavelengths).
-The wavelength coverage range is selected based on the SDSS DR16Q superset coverage because we want to show the generalisation power of our machine learning model.
+From the 546856 spectra in DR12Q superset, we selected only those with ``z > -1``, `Z_CONF_PERSON` equal to 3 and with wavelength coverage in range 3830.01–9084.48 Å (or 3.5832–3.9583 Å in logarithmic wavelengths).
+Giving 523129 spectra after filtering (23727 spectra lost).
+
+The wavelength coverage range is selected based on the SDSS DR16Q superset coverage because we want to show the generalisation power of our machine learning model and the DR16Q superset has smaller wavelength coverage.
 We selected the minimal wavelength to be the 99.9 quantile (3830.01 Å) of all minimal wavelengths and the maximal wavelength to be the 0.01 quantile (9084.48 Å) of all maximal wavelength in the DR16Q catalogue.
 The wavelength range in the DR16Q catalogue gives 1437742 out of 1440615 (2873 lost).
 "
@@ -130,22 +135,47 @@ end
 
 # ╔═╡ a77d68ac-6d47-468a-a00f-52ff8df61d72
 begin
-	@df dr12q_subset histogram(:z_vi, xlabel="z", ylabel="Count", label="DR12Q")
-	@df dr16q_superset[dr16q_superset[:z] .> -1, :] histogram!(:z, label="DR16Q")
+	@df dr12q_subset histogram(
+		:z_vi, xlabel="z", ylabel="Count", label="Z_VI in DR12Q Superset")
+	@df dr16q_superset[dr16q_superset[:z] .> -1, :] histogram!(
+		:z, label="Z in DR16Q Superset")
 end
 
 # ╔═╡ ada2d063-1629-4ce0-a28c-ece36bf7f41b
 md"### Data Preparation
 
-Data preparation consists of continuum normalisation and resampling.
+Data preparation consists of continuum normalisation, resampling and split of data sets.
+
+We get each spectrum from the individual FITS files.
+To do the continuum normalisation, we firstly standardise the fluxes to ensure numerical stability:
+```math
+\mathbf{x}' = \frac{\mathbf{x} - \bar{\mathbf{x}}}{σ(\mathbf{x})}.
+```
+Then, we applied the density of the least squares (DLS) method (Bukvić et al. 2006) with the third order polynomial (not using the inverse variances of each flux) and we substracted the continuum from the standardised spectrum.
+
+!!! warning \"Continuum Normalisation\"
+
+    TODO: experiment without continuum normalisation to se if it help else remove it.
+
+After continuum normalisation, we resampled each spectrum using the SpectRes algorithm (Carnall 2017).
+The original wavelength range is from 3.5832 to 3.9583 Å with 3752 measurements.
+The new wavelength range is from 3.5842 to 3.9583 Å (we added resp. subtracted 0.005 to avoid `null` value on edges due to intrinsic properties of the algorithm.
+We experimented with different number of measument in the new wavelength range (128, 256 and 512).
+
+Finally, we split the DR12Q data into training, validation, and test sets.
+With inspiration from sizes of splits of ImageNet Large Scale Visual Recognition Competition (Russakovsky et al. 2014), sizes of our validation and test sets are 50000 spectra.
+The remaining spectra are in the training set (423129 spectra).
+We do not need to split the DR16Q data because they serve only for evaluation purposes.
+
+The final design matrixes and output vectors are floating point numbers with 32 bits.
 
 ### Metrics of Performance
 
-Root-mean-square (RMS) error: $E_\mathrm{RMS} = \sqrt{\frac{1}{N} \sum_{n = 1}^N (\hat{z}_n - z_n)^2}$. (Bishop, 2006)
+Root-mean-square (RMS) error: ``E_\mathrm{RMS} = \sqrt{\frac{1}{N} \sum_{n = 1}^N (\hat{z}_n - z_n)^2}``. (Bishop, 2006)
 
-Velocity difference $\Delta v = c \cdot \frac{|\hat{z} - z|}{1 + z}$ and median $\Delta v$ and median absolute deviation (MAD) $\Delta v$. (Lyke et al., 2020)
+Velocity difference ``\Delta v = c \cdot \frac{|\hat{z} - z|}{1 + z}`` and median ``\Delta v`` and median absolute deviation (MAD) ``\Delta v``. (Lyke et al., 2020)
 
-Ratio of catastrophic failures: $\Delta v >  3000 \mbox{ km s}^{-1}$. (Lyke et al., 2020)
+Ratio of catastrophic failures: ``\Delta v >  3000 \mbox{ km s}^{-1}``. (Lyke et al., 2020)
 
 Baseline predictions and model to compare to:
 - pipeline (see column `Z_PIPE` in catalogues and Bolton et al. 2012);
@@ -176,7 +206,7 @@ Limitation is that we do nothing about predictions that are uncertain.
 In future research, we plan to use the uncertainty in active learning to further impore predictions."
 
 # ╔═╡ Cell order:
-# ╠═5c7adecc-aefa-11eb-2bb5-f5778d7edcb2
+# ╟─5c7adecc-aefa-11eb-2bb5-f5778d7edcb2
 # ╠═7ea4b94b-f8f0-4eb4-a8cf-e105e67976a6
 # ╟─1a436fc9-d74a-441c-8125-1af54d17fe97
 # ╟─da123329-9d36-45cf-b743-3a333fa5bd11
@@ -184,6 +214,6 @@ In future research, we plan to use the uncertainty in active learning to further
 # ╠═059448cb-e6c5-4a6a-9dfb-f5a51c4c3dea
 # ╠═156df393-e44c-4981-b4fb-e56a83e0292a
 # ╠═a77d68ac-6d47-468a-a00f-52ff8df61d72
-# ╟─ada2d063-1629-4ce0-a28c-ece36bf7f41b
+# ╠═ada2d063-1629-4ce0-a28c-ece36bf7f41b
 # ╟─1316241a-0a53-4db6-806c-685f20a38c7b
 # ╟─63738e8a-d4d0-47a4-a2a6-3990fac7463f
