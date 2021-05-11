@@ -32,24 +32,6 @@ Previously attempts to predict redshift are QuasarNet (Busca & Balland, 2018) in
 # ╔═╡ da123329-9d36-45cf-b743-3a333fa5bd11
 md"## Methods
 
-### Bayesian Convolutional Neural Network
-
-We used Bayesian convolutional network (Bayesian ConvNet) to predict spectroscopic redshift.
-We did it as *regression* problem, because ConvNets are able to do regression.
-See YOLO: \"We reframe object detection as a single regression problem, straight from image pixels to bounding box coordinates and class probabilities.\" (Redmon et al., 2016).
-But we also reformulated the regressin problem as classification problem and ConvNet as classification model is better.
-We transformed continuous redshift by binning into ordinal categories.
-Stivaktakis et al. (2019) used ConvNet as a classification model, but they do not compare to regression.
-
-\"If the input has known topological structure (for example, if the input is an image), use a convolutional network.
-In these cases, you should begin by using some kind of piecewise linear unit (ReLUs or their generalizations, such as Leaky ReLUs, PreLus, or maxout).\" (Goodfellow et al., 2016, p. 420)
-
-\"A reasonable choice of optimization algorithm is SGD with momentum with a decaying learning rate [...]. Another reasonable alternative is Adam.
-Batch normalization can have a dramatic effect on optimization performance, especially for convolutional networks and networks with sigmoidal nonlinearities.
-While it is reasonable to omit batch normalization from the very first baseline, it should be introduced quickly if optimization appears to be problematic.\" (Goodfellow et al., 2016, p. 420)
-
-\"Early stopping should be used almost universally.\" (Goodfellow et al., 2016, p. 420)
-
 ### SDSS DR12Q & DR16Q Data
 
 Data are SDSS DR12Q superset and SDSS DR16Q superset to verify generalisation.
@@ -168,14 +150,19 @@ The remaining spectra are in the training set (423129 spectra).
 We do not need to split the DR16Q data because they serve only for evaluation purposes.
 
 The final design matrixes and output vectors are floating point numbers with 32 bits.
+"
 
-### Metrics of Performance
+# ╔═╡ 0fc6e6ba-d8f1-40df-8bab-6d0dc58f0b83
+# TODO show data preparation in a figure
 
-Root-mean-square (RMS) error: ``E_\mathrm{RMS} = \sqrt{\frac{1}{N} \sum_{n = 1}^N (\hat{z}_n - z_n)^2}``. (Bishop, 2006)
+# ╔═╡ 1d9c8bd4-3401-47b7-87dc-69bbfccc2fe4
+md"### Metrics of Performance
 
-Velocity difference ``\Delta v = c \cdot \frac{|\hat{z} - z|}{1 + z}`` and median ``\Delta v`` and median absolute deviation (MAD) ``\Delta v``. (Lyke et al., 2020)
+Root-mean-square (RMS) error: ``E_\mathrm{RMS} = \sqrt{\frac{1}{N} \sum_{n = 1}^N (\hat{z}_n - z_n)^2}``. (Bishop 2006)
 
-Ratio of catastrophic failures: ``\Delta v >  3000 \mbox{ km s}^{-1}``. (Lyke et al., 2020)
+Velocity difference ``\Delta v = c \cdot \frac{|\hat{z} - z|}{1 + z}`` and median ``\Delta v`` and median absolute deviation (MAD) ``\Delta v``. (Lyke et al. 2020)
+
+Ratio of catastrophic failures: ``\Delta v > 3000 \mbox{ km s}^{-1}``. (Lyke et al. 2020)
 
 Baseline predictions and model to compare to:
 - pipeline (see column `Z_PIPE` in catalogues and Bolton et al. 2012);
@@ -189,7 +176,33 @@ This is useful when the machine learning algorithm can estimate how confident it
 [...]
 A natural performance metric to use in this situaiton is **coverage**.
 Coverage is the fraction of examples for wich the machine learning system is able to produce a response.
-It is possible to trade coverage for accuracy.\" (Goodfellow et al., 2016, p. 419)
+It is possible to trade coverage for accuracy.\" (Goodfellow et al. 2016, p. 419)
+
+### Bayesian Convolutional Neural Network
+
+We used Bayesian convolutional network (Bayesian ConvNet) to predict spectroscopic redshift.
+We did it as *regression* problem, because ConvNets are able to do regression.
+See YOLO: \"We reframe object detection as a single regression problem, straight from image pixels to bounding box coordinates and class probabilities.\" (Redmon et al. 2016).
+But we also reformulated the regressin problem as classification problem and ConvNet as classification model is better.
+We transformed continuous redshift by binning into ordinal categories.
+Stivaktakis et al. (2019) used ConvNet as a classification model, but they do not compare to regression.
+
+\"If the input has known topological structure (for example, if the input is an image), use a convolutional network.
+In these cases, you should begin by using some kind of piecewise linear unit (ReLUs or their generalizations, such as Leaky ReLUs, PreLus, or maxout).\" (Goodfellow et al. 2016, p. 420)
+
+Optimisation:
+- Adam optimiser (learning rate ``\eta = 0.001``, ``\beta_1 = 0.9``, and ``\beta_2 = 0.999``) (Kingma & Ba 2017):
+  \"A reasonable choice of optimization algorithm is SGD with momentum with a decaying learning rate [...]. Another reasonable alternative is Adam.\" (Goodfellow et al. 2016, p. 420);
+- batch size: 256;
+- early stopping with patience of 32 epochs:
+  we stop training if no improvement in cat. ``z`` ratio during last 32 epochs,
+  32 epochs is a trade-off between a convergence and duration of training,
+  we recover the best model found
+  (Goodfellow et al. 2016, p. 420: \"Early stopping should be used almost universally.\");
+- regression uses the *mean squared error* loss;
+- classification uses the *cross-entropy* loss;
+- bayesian models use weight decay ``\lambda``:
+  we used grid search to set the ``\lambda`` hyperparameter;
 "
 
 # ╔═╡ 1316241a-0a53-4db6-806c-685f20a38c7b
@@ -214,6 +227,8 @@ In future research, we plan to use the uncertainty in active learning to further
 # ╠═059448cb-e6c5-4a6a-9dfb-f5a51c4c3dea
 # ╠═156df393-e44c-4981-b4fb-e56a83e0292a
 # ╠═a77d68ac-6d47-468a-a00f-52ff8df61d72
-# ╠═ada2d063-1629-4ce0-a28c-ece36bf7f41b
+# ╟─ada2d063-1629-4ce0-a28c-ece36bf7f41b
+# ╠═0fc6e6ba-d8f1-40df-8bab-6d0dc58f0b83
+# ╠═1d9c8bd4-3401-47b7-87dc-69bbfccc2fe4
 # ╟─1316241a-0a53-4db6-806c-685f20a38c7b
 # ╟─63738e8a-d4d0-47a4-a2a6-3990fac7463f
