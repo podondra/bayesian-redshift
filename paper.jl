@@ -134,10 +134,11 @@ To do the continuum normalisation, we firstly standardise the fluxes to ensure n
 \mathbf{x}' = \frac{\mathbf{x} - \bar{\mathbf{x}}}{σ(\mathbf{x})}.
 ```
 Then, we applied the density of the least squares (DLS) method (Bukvić et al. 2006) with the third order polynomial (not using the inverse variances of each flux) and we substracted the continuum from the standardised spectrum.
+Standardisation and continuum normalisation make spectra invariant to scale, intensities and continuum shape, i.e. we focus mainly on spectral lines.
 
-!!! warning \"Continuum Normalisation\"
+!!! warning \"TODO: Continuum Normalisation\"
 
-    TODO: experiment without continuum normalisation to se if it help else remove it.
+    Experiment without continuum normalisation to se if it help else remove it.
 
 After continuum normalisation, we resampled each spectrum using the SpectRes algorithm (Carnall 2017).
 The original wavelength range is from 3.5832 to 3.9583 Å with 3752 measurements.
@@ -156,13 +157,43 @@ The final design matrixes and output vectors are floating point numbers with 32 
 # TODO show data preparation in a figure
 
 # ╔═╡ 1d9c8bd4-3401-47b7-87dc-69bbfccc2fe4
+md"### Bayesian Convolutional Neural Network
+
+We used Bayesian convolutional network (Bayesian ConvNet) to predict spectroscopic redshift.
+We did it as *regression* problem, because ConvNets are able to do regression.
+See YOLO: \"We reframe object detection as a single regression problem, straight from image pixels to bounding box coordinates and class probabilities.\" (Redmon et al. 2016).
+But we also reformulated the regressin problem as classification problem and ConvNet as classification model is better.
+We transformed continuous redshift by binning into ordinal categories.
+Stivaktakis et al. (2019) used ConvNet as a classification model, but they do not compare to regression.
+
+Architercture:
+- convolutional neural network (ConvNet):
+  \"If the input has known topological structure (for example, if the input is an image), use a convolutional network.\" (Goodfellow et al. 2016, p. 420);
+- ReLUs activation functions (``\max(0, z)``):
+  \"In these cases, you should begin by using some kind of piecewise linear unit (ReLUs or their generalizations, such as Leaky ReLUs, PreLus, or maxout).\" (Goodfellow et al. 2016, p. 420);
+- same padding.
+
+Optimisation:
+- Adam optimiser (learning rate ``\eta = 0.001``, ``\beta_1 = 0.9``, and ``\beta_2 = 0.999``) (Kingma & Ba 2017):
+  \"A reasonable choice of optimization algorithm is SGD with momentum with a decaying learning rate [...]. Another reasonable alternative is Adam.\" (Goodfellow et al. 2016, p. 420);
+- batch size: 256;
+- early stopping with patience of 32 epochs:
+  we stop training if no improvement in cat. ``z`` ratio during last 32 epochs,
+  32 epochs is a trade-off between a convergence and duration of training,
+  we recover the best model found
+  (Goodfellow et al. 2016, p. 420: \"Early stopping should be used almost universally.\");
+- regression uses the *mean squared error* loss;
+- classification uses the *cross-entropy* loss;
+- bayesian models use weight decay ``\lambda``:
+  we used grid search to set the ``\lambda`` hyperparameter.
+"
+
+# ╔═╡ ce257413-8fe8-4bcb-b317-18af463fbd2b
 md"### Metrics of Performance
 
-Root-mean-square (RMS) error: ``E_\mathrm{RMS} = \sqrt{\frac{1}{N} \sum_{n = 1}^N (\hat{z}_n - z_n)^2}``. (Bishop 2006)
-
-Velocity difference ``\Delta v = c \cdot \frac{|\hat{z} - z|}{1 + z}`` and median ``\Delta v`` and median absolute deviation (MAD) ``\Delta v``. (Lyke et al. 2020)
-
-Ratio of catastrophic failures: ``\Delta v > 3000 \mbox{ km s}^{-1}``. (Lyke et al. 2020)
+1. Root-mean-square (RMS) error: ``E_\mathrm{RMS} = \sqrt{\frac{1}{N} \sum_{n = 1}^N (\hat{z}_n - z_n)^2}``. (Bishop 2006)
+1. Velocity difference ``\Delta v = c \cdot \frac{|\hat{z} - z|}{1 + z}`` and median ``\Delta v`` and median absolute deviation (MAD) ``\Delta v``. (Lyke et al. 2020)
+1. Ratio of catastrophic failures: ``\Delta v > 3000 \mbox{ km s}^{-1}``. (Lyke et al. 2020)
 
 Baseline predictions and model to compare to:
 - pipeline (see column `Z_PIPE` in catalogues and Bolton et al. 2012);
@@ -177,36 +208,35 @@ This is useful when the machine learning algorithm can estimate how confident it
 A natural performance metric to use in this situaiton is **coverage**.
 Coverage is the fraction of examples for wich the machine learning system is able to produce a response.
 It is possible to trade coverage for accuracy.\" (Goodfellow et al. 2016, p. 419)
-
-### Bayesian Convolutional Neural Network
-
-We used Bayesian convolutional network (Bayesian ConvNet) to predict spectroscopic redshift.
-We did it as *regression* problem, because ConvNets are able to do regression.
-See YOLO: \"We reframe object detection as a single regression problem, straight from image pixels to bounding box coordinates and class probabilities.\" (Redmon et al. 2016).
-But we also reformulated the regressin problem as classification problem and ConvNet as classification model is better.
-We transformed continuous redshift by binning into ordinal categories.
-Stivaktakis et al. (2019) used ConvNet as a classification model, but they do not compare to regression.
-
-\"If the input has known topological structure (for example, if the input is an image), use a convolutional network.
-In these cases, you should begin by using some kind of piecewise linear unit (ReLUs or their generalizations, such as Leaky ReLUs, PreLus, or maxout).\" (Goodfellow et al. 2016, p. 420)
-
-Optimisation:
-- Adam optimiser (learning rate ``\eta = 0.001``, ``\beta_1 = 0.9``, and ``\beta_2 = 0.999``) (Kingma & Ba 2017):
-  \"A reasonable choice of optimization algorithm is SGD with momentum with a decaying learning rate [...]. Another reasonable alternative is Adam.\" (Goodfellow et al. 2016, p. 420);
-- batch size: 256;
-- early stopping with patience of 32 epochs:
-  we stop training if no improvement in cat. ``z`` ratio during last 32 epochs,
-  32 epochs is a trade-off between a convergence and duration of training,
-  we recover the best model found
-  (Goodfellow et al. 2016, p. 420: \"Early stopping should be used almost universally.\");
-- regression uses the *mean squared error* loss;
-- classification uses the *cross-entropy* loss;
-- bayesian models use weight decay ``\lambda``:
-  we used grid search to set the ``\lambda`` hyperparameter;
 "
 
 # ╔═╡ 1316241a-0a53-4db6-806c-685f20a38c7b
-md"## Results"
+md"## Results
+
+Hyperparameter evaluatoin on DR12Q superset validation set:
+
+| Experimental Setup | ``E_\mathrm{RMS}`` | Median ``\Delta v`` | Cat. ``z`` (%) |
+|:-------------------| ------------------:| -------------------:| --------------:|
+| Input 256 (Reg)    | TODO               | TODO                | TODO           |
+| Input 256 (Clf)    | TODO               | TODO                | TODO           |
+| Input 128 (Clf)    | TODO               | TODO                | TODO           |
+| Input 512 (Clf)    | TODO               | TODO                | TODO           |
+| ``\lambda = ?``    | TODO               | TODO                | TODO           |
+
+Final evaluation on DR12Q superset test set
+(baselines and model with hyperparameters optimised on DR12Q validation set):
+
+| Model                 | ``E_\mathrm{RMS}`` | Median ``\Delta v`` | Cat. ``z`` (%) |
+|:----------------------| ------------------:| -------------------:| --------------:|
+| `Z_PIPE`              | TODO               | TODO (TODO)         | TODO           |
+| `Z_PCA`               | TODO               | TODO (TODO)         | TODO           |
+| `Z_QN` (DR16Q)        | TODO               | TODO (TODO)         | TODO           |
+| Reg ConvNet           | TODO               | TODO (TODO)         | TODO           |
+| Bayesian Reg ConvNet  | TODO               | TODO (TODO)         | TODO           |
+| Clf ConvNet           | TODO               | TODO (TODO)         | TODO           |
+
+Evaluation on DR16Q superset is tricky because not all spectra are visually inspected.
+"
 
 # ╔═╡ 63738e8a-d4d0-47a4-a2a6-3990fac7463f
 md"## Discussion
@@ -229,6 +259,7 @@ In future research, we plan to use the uncertainty in active learning to further
 # ╠═a77d68ac-6d47-468a-a00f-52ff8df61d72
 # ╟─ada2d063-1629-4ce0-a28c-ece36bf7f41b
 # ╠═0fc6e6ba-d8f1-40df-8bab-6d0dc58f0b83
-# ╠═1d9c8bd4-3401-47b7-87dc-69bbfccc2fe4
-# ╟─1316241a-0a53-4db6-806c-685f20a38c7b
+# ╟─1d9c8bd4-3401-47b7-87dc-69bbfccc2fe4
+# ╟─ce257413-8fe8-4bcb-b317-18af463fbd2b
+# ╠═1316241a-0a53-4db6-806c-685f20a38c7b
 # ╟─63738e8a-d4d0-47a4-a2a6-3990fac7463f
