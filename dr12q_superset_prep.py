@@ -3,9 +3,9 @@ import numpy as np
 from spectres import spectres
 
 
-LOGLAMMIN, LOGLAMMAX = 3.5818, 3.9633
+LOGLAMMIN, LOGLAMMAX = 3.5832, 3.9583
 N_FEATURES = 256
-EPS = 0.001
+EPS = 0.005
 N_VAL, N_TEST = 50000, 50000
 
 
