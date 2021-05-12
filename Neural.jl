@@ -17,57 +17,31 @@ using TensorBoardLogger
 include("Evaluation.jl")
 using .Evaluation
 
-EDGES = -0.005f0:0.01f0:5.985f0
-LABELS = [@sprintf "%.2f" label for label in 0:0.01:5.98]
-
 export bayesian_model, regression_model, classification_model, classify, regress,
     train_wrapper_regression!, train_wrapper_classification!
-
-function regression_model()
-    Chain(
-        Flux.unsqueeze(2),
-        Conv((3, ), 1 => 16, relu, pad=SamePad()),
-        MaxPool((2, )),
-        Conv((3, ), 16 => 32, relu, pad=SamePad()),
-        MaxPool((2, )),
-        Conv((3, ), 32 => 64, relu, pad=SamePad()),
-        MaxPool((2, )),
-        flatten,
-        Dense(2048, 2048, relu),
-        Dense(2048, 2048, relu),
-        Dense(2048, 1, relu))
-end
 
 function classification_model()
     Chain(
         Flux.unsqueeze(2),
-        Conv((3, ), 1 => 8, relu, pad=SamePad()),
-        Dropout(0.5),
-        MaxPool((2, )),
-        Conv((3, ), 8 => 16, relu, pad=SamePad()),
-        Dropout(0.5),
-        MaxPool((2, )),
+        Conv((3, ), 1 => 4, relu, pad=SamePad()),
+        Conv((3, ), 4 => 8, relu, pad=SamePad()),
         flatten,
-        Dense(1024, 1024, relu),
+        Dense(2048, 2048, relu),
         Dropout(0.5),
-        Dense(1024, 599))
+        Dense(2048, 2048, relu),
+        Dropout(0.5),
+        Dense(2048, 599))
 end
 
-function bayesian_model()
+function regression_model()
     Chain(
         Flux.unsqueeze(2),
-        Conv((3, ), 1 => 32, relu, pad=SamePad()),
-        Dropout(0.5),
-        MaxPool((2, )),
-        Conv((3, ), 32 => 64, relu, pad=SamePad()),
-        Dropout(0.5),
-        MaxPool((2, )),
+        Conv((3, ), 1 => 4, relu, pad=SamePad()),
+        Conv((3, ), 4 => 8, relu, pad=SamePad()),
         flatten,
-        Dense(4096, 1024, relu),
-        Dropout(0.5),
-        Dense(1024, 1024, relu),
-        Dropout(0.5),
-        Dense(1024, 1, relu))
+        Dense(2048, 2048, relu),
+        Dense(2048, 2048, relu),
+        Dense(2048, 1))
 end
 
 function get_data()
@@ -88,6 +62,8 @@ function get_classification_data()
     y_validation = read(datafile, "z_vi_va")
     close(datafile)
 
+    EDGES = -0.005f0:0.01f0:5.985f0
+    LABELS = [@sprintf "%.2f" label for label in 0:0.01:5.98]
     y_train_categorical = cut(y_train, EDGES, labels=LABELS)
     y_train_onehot = Flux.onehotbatch(y_train_categorical, LABELS)
 
@@ -101,8 +77,7 @@ end
 
 function classify(model, X)
     loader = DataLoader(X, batchsize=2048)
-    # TODO LABELS should be an array of Float32
-    return parse.(Float32, reduce(vcat, [Flux.onecold(model(x), LABELS) for x in loader]))
+    return reduce(vcat, [Flux.onecold(model(x), 0.00f0:0.01f0:5.98f0) for x in loader])
 end
 
 function train_with_early_stopping!(
@@ -112,7 +87,8 @@ function train_with_early_stopping!(
     X_train, y_train_encoded = X_train |> device, y_train_encoded |> device
     X_validation = X_validation |> device
 
-    loader_train = DataLoader((X_train, y_train_encoded), batchsize=batchsize, shuffle=true)
+    loader_train = DataLoader(
+        (X_train, y_train_encoded), batchsize=batchsize, shuffle=true)
 
     optimizer = Optimiser(WeightDecay(weight_decay), ADAM())
     Θ = params(model)
@@ -120,25 +96,25 @@ function train_with_early_stopping!(
     loss_function(x, y) = loss(model(x), y)
 
     epoch = 1
-    catz_validation_star = typemax(Float32)
+    cat_z_validation_star = typemax(Float32)
     i = 0
     while i < patience
         Flux.train!(loss_function, Θ, loader_train, optimizer)
         epoch += 1
 
-        ŷ_train = predict(model, X_train)
-        ŷ_validation = predict(model, X_validation)
+        ŷ_train = predict(model, X_train) |> cpu
+        ŷ_validation = predict(model, X_validation) |> cpu
 
         rmse_train = rmse(y_train, ŷ_train)
         rmse_validation = rmse(y_validation, ŷ_validation)
         @info "rmse" train=rmse_train validation=rmse_validation
-        catz_train = cat_z_ratio(y_train, ŷ_train)
-        catz_validation = cat_z_ratio(y_validation, ŷ_validation)
-        @info "catastrophic z ratio" train=catz_train validation=catz_validation
+        cat_z_train = cat_z_ratio(y_train, ŷ_train)
+        cat_z_validation = cat_z_ratio(y_validation, ŷ_validation)
+        @info "catastrophic z ratio" train=cat_z_train validation=cat_z_validation
 
-        if catz_validation < catz_validation_star
+        if cat_z_validation < cat_z_validation_star
             i = 0
-            catz_validation_star = catz_validation
+            cat_z_validation_star = cat_z_validation
             bson(file_model, model=cpu(model))
         else
             i += 1
@@ -157,7 +133,7 @@ function train_wrapper_regression!(model, model_name; bs=256, wd=0)
     end
 end
 
-function train_wrapper_classification!(model, model_name; bs=256, wd=1e-3)
+function train_wrapper_classification!(model, model_name; bs=256, wd=0)
     logger = TBLogger("runs/" * model_name, tb_overwrite)
     with_logger(logger) do
         train_with_early_stopping!(

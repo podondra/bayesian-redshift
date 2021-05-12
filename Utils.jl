@@ -4,7 +4,7 @@ using FITSIO
 using Plots
 using Printf
 
-export LOGLAMMIN, LOGLAMMAX, get_filepath, get_spectrum,
+export LOGLAMMIN, LOGLAMMAX, get_filepath, get_spectrum, get_linear_spectrum,
        plot_spectral_lines!, plot_spectrum, polynomial_features
 
 ε = 0.001
@@ -35,6 +35,16 @@ function get_spectrum(
     flux = read(hdulist[2], "flux")
     close(hdulist)
     return loglam, flux
+end
+
+function get_linear_spectrum(
+        superset::String, plate::Int32, mjd::Int32,
+        fiberid::Int32)::Tuple{Vector{Float32}, Vector{Float32}}
+    hdulist = FITS(Utils.get_filepath(superset, plate, mjd, fiberid))
+    lam = 10 .^ read(hdulist[2], "loglam")
+    flux = read(hdulist[2], "flux")
+    close(hdulist)
+    return lam, flux
 end
 
 function plot_spectral_lines!(z; color=:black, location=:top)

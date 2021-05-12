@@ -1,19 +1,31 @@
 module Evaluation
 
-export rmse, cat_z_ratio, compute_delta_v
+using Statistics
 
-function rmse(t, y)
-    sqrt(1 / length(t) * (t - y)'  * (t - y))
+export rmse, cat_z_ratio, compute_Δv, median_Δv, mad_Δv
+
+function rmse(y, ŷ)
+    return sqrt(1 / length(y) * (y - ŷ)'  * (y - ŷ))
 end
 
-function compute_delta_v(z_vi, z)
+function compute_Δv(z_vi, z)
     # the speed of light in vacuum (km / s)
     c = 299792.458
-    c .* abs.(z - z_vi) ./ (1 .+ z_vi)
+    return c .* abs.(z - z_vi) ./ (1 .+ z_vi)
 end
 
-function cat_z_ratio(t, y; threshold=3000)
-    sum(compute_delta_v(t, y) .> threshold) / length(t)
+function cat_z_ratio(y, ŷ; threshold=3000)
+    return sum(compute_Δv(y, ŷ) .> threshold) / length(y)
+end
+
+function median_Δv(y, ŷ)
+    return median(compute_Δv(y, ŷ))
+end
+
+function mad_Δv(y, ŷ)
+    Δv = compute_Δv(y, ŷ)
+    median_Δv = median(Δv)
+    return median(abs.(Δv .- median_Δv))
 end
 
 end # module
