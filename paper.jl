@@ -166,14 +166,14 @@ But we also reformulated the regressin problem as classification problem and Con
 We transformed continuous redshift by binning into ordinal categories.
 Stivaktakis et al. (2019) used ConvNet as a classification model, but they do not compare to regression.
 
-Architercture:
+*Architercture*:
 - convolutional neural network (ConvNet):
   \"If the input has known topological structure (for example, if the input is an image), use a convolutional network.\" (Goodfellow et al. 2016, p. 420);
 - ReLUs activation functions (``\max(0, z)``):
   \"In these cases, you should begin by using some kind of piecewise linear unit (ReLUs or their generalizations, such as Leaky ReLUs, PreLus, or maxout).\" (Goodfellow et al. 2016, p. 420);
 - same padding.
 
-Optimisation:
+*Optimisation*:
 - Adam optimiser (learning rate ``\eta = 0.001``, ``\beta_1 = 0.9``, and ``\beta_2 = 0.999``) (Kingma & Ba 2017):
   \"A reasonable choice of optimization algorithm is SGD with momentum with a decaying learning rate [...]. Another reasonable alternative is Adam.\" (Goodfellow et al. 2016, p. 420);
 - batch size: 256;
@@ -186,6 +186,19 @@ Optimisation:
 - classification uses the *cross-entropy* loss;
 - bayesian models use weight decay ``\lambda``:
   we used grid search to set the ``\lambda`` hyperparameter.
+
+*Regression*:
+Redshitf ``z`` takes it values from continuous non-negative numbers: ``z > 0``.
+Therefore, we should naturally model prediction of redshift as a regression problem.
+Development of model architecture:
+We started with a single input layer (256 input unit) and a single output layer (1 output unnit).
+Then, we incrementally added fully connected and convolutional layers.
+We were inspired by the successful VGG networks (Simonyan & Zisserman 2015) and YOLO networks (Redmon & Farhadi 2018):
+at most 3 fully connected layer and convolutional kernels of size 3.
+
+*Classification*:
+We bin redshift into 599 bins so that we can predict redshift with 2 decimal places.
+Therefere, the network has now 599 output units with a softmax output layer.
 "
 
 # ╔═╡ ce257413-8fe8-4bcb-b317-18af463fbd2b
@@ -221,6 +234,7 @@ Hyperparameter evaluatoin on DR12Q superset validation set:
 | Input 256 (Clf)    | TODO               | TODO                | TODO           |
 | Input 128 (Clf)    | TODO               | TODO                | TODO           |
 | Input 512 (Clf)    | TODO               | TODO                | TODO           |
+| W\out pooling      | TODO               | TODO                | TODO           |
 | ``\lambda = ?``    | TODO               | TODO                | TODO           |
 
 Final evaluation on DR12Q superset test set
@@ -261,5 +275,5 @@ In future research, we plan to use the uncertainty in active learning to further
 # ╠═0fc6e6ba-d8f1-40df-8bab-6d0dc58f0b83
 # ╟─1d9c8bd4-3401-47b7-87dc-69bbfccc2fe4
 # ╟─ce257413-8fe8-4bcb-b317-18af463fbd2b
-# ╠═1316241a-0a53-4db6-806c-685f20a38c7b
+# ╟─1316241a-0a53-4db6-806c-685f20a38c7b
 # ╟─63738e8a-d4d0-47a4-a2a6-3990fac7463f
