@@ -5,7 +5,13 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 7ea4b94b-f8f0-4eb4-a8cf-e105e67976a6
-using DataFrames, FITSIO, Statistics, StatsPlots
+using BSON, DataFrames, FITSIO, Flux, HDF5, Statistics, StatsPlots
+
+# ╔═╡ c3e1d861-e9ef-4898-977e-58567f74b8f9
+include("Evaluation.jl"); using .Evaluation
+
+# ╔═╡ aa748fa7-37ba-448f-b41d-a6dec1ee1390
+include("Neural.jl"); using .Neural
 
 # ╔═╡ 5c7adecc-aefa-11eb-2bb5-f5778d7edcb2
 md"# Prediction of Spectroscopic Redshift with a Bayesian Convolutional Network
@@ -14,6 +20,9 @@ For IMRaD reference: [Writing a Scientific Research Report (IMRaD)](https://writ
 "
 
 # TODO abstract
+
+# ╔═╡ 6586c79d-41ee-47f4-9ebe-26f156c6c883
+Core.eval(Main, :(import Flux, NNlib))
 
 # ╔═╡ 1a436fc9-d74a-441c-8125-1af54d17fe97
 md"## Introduction
@@ -226,31 +235,134 @@ It is possible to trade coverage for accuracy.\" (Goodfellow et al. 2016, p. 419
 # ╔═╡ 1316241a-0a53-4db6-806c-685f20a38c7b
 md"## Results
 
-Hyperparameter evaluatoin on DR12Q superset validation set:
+We started with a fully-connected (FC) neural network (ReLU activations) for regression (1 output unit).
+By incrementally adding layer, we optimised (the network achived best cat. ``z``) its architecture to have ? layers, where each layer has ? units.
+
+However if we take the prediction of redshift as a regression problem, we can achieve much better performance with a FC neural network.
+
+Furthermore, we tried to improve performance by using ConvNet.
+As in our previous project (A&A and ADASS XXX) we took inspiration from VGG ConvNets.
+Firstly we used the VGG Net-A with 11 weight layers.
+Then, we removed doubled convolutional layers and we saw increase in performace.
+However, further removal of both convolutional and pooling layers made no improvement.
+
+It is claimed that max pooling layers worsen performance.
+See Stivaktakis et al. 2019: \"By using pooling, we suppress these transformations, 'crippling' the network’s ability to identify each different redshift.\"
+QuasarNet do not use max pooling layers.
+We try to remove max pooling layers but the vector inside the network then grows and so the FC layers have to be big and performace is not good.
+Therefore, we replaced the max pooling layers with mean pooling layers and we saw increase in performace (YOLOv3 uses global `Avgpool`).
+
+Hyperparameter evaluation on DR12Q superset validation set:
 
 | Experimental Setup | ``E_\mathrm{RMS}`` | Median ``\Delta v`` | Cat. ``z`` (%) |
 |:-------------------| ------------------:| -------------------:| --------------:|
-| Input 256 (Reg)    | TODO               | TODO                | TODO           |
-| Input 256 (Clf)    | TODO               | TODO                | TODO           |
-| Input 128 (Clf)    | TODO               | TODO                | TODO           |
-| Input 512 (Clf)    | TODO               | TODO                | TODO           |
-| W\out pooling      | TODO               | TODO                | TODO           |
+| FC (Reg)           |            0.13390 |             674.985 |          6.782 |
+| ConvNet (Reg)      |            0.11275 |            1814.830 |         17.992 |
+| FC (Clf)           | TODO               | TODO                | TODO           |
+| VGG Net-A (Clf)    |            0.12219 |              97.005 |          1.062 |
+| VGG 8 layers       |            0.11879 |              96.073 |          1.054 |
+| VGG 8 (MeanPool)   |            0.11385 |              95.522 |          1.008 |
+| Input 128          | TODO               | TODO                | TODO           |
+| Input 512          | TODO               | TODO                | TODO           |
 | ``\lambda = ?``    | TODO               | TODO                | TODO           |
+"
 
-Final evaluation on DR12Q superset test set
+# ╔═╡ 01c1aabd-70c8-4cc9-8674-b94546e31ca4
+begin
+	dr12q_file_validation = h5open("data/dr12q_superset.hdf5", "r")
+	X_validation = read(dr12q_file_validation, "X_va") |> gpu
+	y_validation = read(dr12q_file_validation, "z_vi_va")
+	close(dr12q_file_validation)
+end
+
+# ╔═╡ c0a4ac4c-988b-4bb8-9725-69d4406d8f69
+function validate_model(model_file, predict)
+	model = BSON.load(model_file)[:model] |> gpu
+	ŷ_validation = predict(model, X_validation) |> cpu
+	Evaluation.rmse(y_validation, ŷ_validation),
+	Evaluation.median_Δv(y_validation, ŷ_validation),
+	Evaluation.cat_z_ratio(y_validation, ŷ_validation)
+end
+
+# ╔═╡ fe599adc-000c-4324-8857-bd1976287cfb
+validate_model("models/regression_fc.bson", Neural.regress)
+
+# ╔═╡ 039403d5-7f2d-43c1-8715-196a657df401
+validate_model("models/regression_vgg11.bson", Neural.regress)
+
+# ╔═╡ 535acb31-3c47-45b5-98d9-31a591647f2b
+validate_model("models/classification_fc.bson", Neural.classify)
+
+# ╔═╡ bf6656ff-7ea6-4e68-921c-65da221c9ab8
+validate_model("models/classification_vgg11.bson", Neural.classify)
+
+# ╔═╡ ef635b36-524b-4e06-97fa-e83ab413451f
+validate_model("models/classification_maxpool.bson", Neural.classify)
+
+# ╔═╡ f9e450ae-3f7b-43c6-a666-3ecf6f79ebdd
+validate_model("models/classification_meanpool.bson", Neural.classify)
+
+# ╔═╡ 66108ca4-7435-44dd-bbdf-6c8a88a1ef88
+md"Final evaluation on DR12Q superset test set
 (baselines and model with hyperparameters optimised on DR12Q validation set):
 
 | Model                 | ``E_\mathrm{RMS}`` | Median ``\Delta v`` | Cat. ``z`` (%) |
 |:----------------------| ------------------:| -------------------:| --------------:|
-| `Z_PIPE`              | TODO               | TODO (TODO)         | TODO           |
-| `Z_PCA`               | TODO               | TODO (TODO)         | TODO           |
-| `Z_QN` (DR16Q)        | TODO               | TODO (TODO)         | TODO           |
-| Reg ConvNet           | TODO               | TODO (TODO)         | TODO           |
-| Bayesian Reg ConvNet  | TODO               | TODO (TODO)         | TODO           |
-| Clf ConvNet           | TODO               | TODO (TODO)         | TODO           |
+| `Z_PIPE`              |            0.51570 |              66.218 |          6.966 |
+| `Z_PIPE` (DR16Q)      |            0.47828 |              82.166 |          6.475 |
+| `Z_PCA` (DR16Q)       |            0.43611 |             240.723 |         11.417 |
+| `Z_QN` (DR16Q)        |            1.14393 |             966.862 |         42.840 |
+| Reg ConvNet           | TODO               | TODO                | TODO           |
+| Bayesian Reg ConvNet  | TODO               | TODO                | TODO           |
+| Clf ConvNet           | TODO               | TODO                | TODO           |
 
 Evaluation on DR16Q superset is tricky because not all spectra are visually inspected.
 "
+
+# ╔═╡ ae3dc645-9591-46d0-8e70-99a26891f30f
+begin
+	dr12q_file = h5open("data/dr12q_superset.hdf5", "r")
+	id_test = read(dr12q_file, "id_te")
+	dr12q_df = DataFrame(
+		plate=id_test[1, :],
+		mjd=id_test[2, :],
+		fiberid=id_test[3, :],
+		z_vi=read(dr12q_file, "z_vi_te"),
+		z_pipe = read(dr12q_file, "z_pipe_te"))
+	close(dr12q_file)
+	dr16q_file = h5open("data/dr16q_superset.hdf5", "r")
+	id = read(dr16q_file, "id")
+	dr16q_df = DataFrame(
+		plate=id[1, :],
+		mjd=id[2, :],
+		fiberid=id[3, :],
+		z_qn=read(dr16q_file, "z_qn"),
+		z_pca=read(dr16q_file, "z_pca"),
+		z_pipe_dr16q=read(dr16q_file, "z_pipe"))
+	close(dr16q_file)
+	dr12q_df_extended = leftjoin(dr12q_df, dr16q_df, on=[:plate, :mjd, :fiberid])
+	dropmissing!(dr12q_df_extended)
+end
+
+# ╔═╡ fff00d10-892a-49aa-950d-4059376425e9
+Evaluation.rmse(dr12q_df[:z_vi], dr12q_df[:z_pipe]),
+Evaluation.median_Δv(dr12q_df[:z_vi], dr12q_df[:z_pipe]),
+Evaluation.cat_z_ratio(dr12q_df[:z_vi], dr12q_df[:z_pipe])
+
+# ╔═╡ 22cc8705-7158-4f36-ba1d-24671f589f21
+Evaluation.rmse(dr12q_df_extended[:z_vi], dr12q_df_extended[:z_pipe_dr16q]),
+Evaluation.median_Δv(dr12q_df_extended[:z_vi], dr12q_df_extended[:z_pipe_dr16q]),
+Evaluation.cat_z_ratio(dr12q_df_extended[:z_vi], dr12q_df_extended[:z_pipe_dr16q])
+
+# ╔═╡ a057e8a1-b967-4d6d-8a02-01ff274339e4
+Evaluation.rmse(dr12q_df_extended[:z_vi], dr12q_df_extended[:z_pca]),
+Evaluation.median_Δv(dr12q_df_extended[:z_vi], dr12q_df_extended[:z_pca]),
+Evaluation.cat_z_ratio(dr12q_df_extended[:z_vi], dr12q_df_extended[:z_pca])
+
+# ╔═╡ 398b34ac-5214-4beb-b8ed-392e327b2cac
+Evaluation.rmse(dr12q_df_extended[:z_vi], dr12q_df_extended[:z_qn]),
+Evaluation.median_Δv(dr12q_df_extended[:z_vi], dr12q_df_extended[:z_qn]),
+Evaluation.cat_z_ratio(dr12q_df_extended[:z_vi], dr12q_df_extended[:z_qn])
 
 # ╔═╡ 63738e8a-d4d0-47a4-a2a6-3990fac7463f
 md"## Discussion
@@ -260,11 +372,16 @@ We hypothesise that classification is better because of the cross-entropy loss w
 (See Deep Learning book: In classification mean squared error loss was replaced with cross-entropy. But, here the case is regression versus classification.)
 
 Limitation is that we do nothing about predictions that are uncertain.
-In future research, we plan to use the uncertainty in active learning to further impore predictions."
+In future research, we plan to use the uncertainty in active learning to further impore predictions.
+
+Training of QuasarNet took about 20 hours. We are much faster."
 
 # ╔═╡ Cell order:
 # ╟─5c7adecc-aefa-11eb-2bb5-f5778d7edcb2
 # ╠═7ea4b94b-f8f0-4eb4-a8cf-e105e67976a6
+# ╠═c3e1d861-e9ef-4898-977e-58567f74b8f9
+# ╠═aa748fa7-37ba-448f-b41d-a6dec1ee1390
+# ╠═6586c79d-41ee-47f4-9ebe-26f156c6c883
 # ╟─1a436fc9-d74a-441c-8125-1af54d17fe97
 # ╟─da123329-9d36-45cf-b743-3a333fa5bd11
 # ╠═c4c54574-dd08-49bb-8f7b-0ffcf45a02ee
@@ -275,5 +392,19 @@ In future research, we plan to use the uncertainty in active learning to further
 # ╠═0fc6e6ba-d8f1-40df-8bab-6d0dc58f0b83
 # ╟─1d9c8bd4-3401-47b7-87dc-69bbfccc2fe4
 # ╟─ce257413-8fe8-4bcb-b317-18af463fbd2b
-# ╟─1316241a-0a53-4db6-806c-685f20a38c7b
+# ╠═1316241a-0a53-4db6-806c-685f20a38c7b
+# ╠═01c1aabd-70c8-4cc9-8674-b94546e31ca4
+# ╠═c0a4ac4c-988b-4bb8-9725-69d4406d8f69
+# ╠═fe599adc-000c-4324-8857-bd1976287cfb
+# ╠═039403d5-7f2d-43c1-8715-196a657df401
+# ╠═535acb31-3c47-45b5-98d9-31a591647f2b
+# ╠═bf6656ff-7ea6-4e68-921c-65da221c9ab8
+# ╠═ef635b36-524b-4e06-97fa-e83ab413451f
+# ╠═f9e450ae-3f7b-43c6-a666-3ecf6f79ebdd
+# ╠═66108ca4-7435-44dd-bbdf-6c8a88a1ef88
+# ╠═ae3dc645-9591-46d0-8e70-99a26891f30f
+# ╠═fff00d10-892a-49aa-950d-4059376425e9
+# ╠═22cc8705-7158-4f36-ba1d-24671f589f21
+# ╠═a057e8a1-b967-4d6d-8a02-01ff274339e4
+# ╠═398b34ac-5214-4beb-b8ed-392e327b2cac
 # ╟─63738e8a-d4d0-47a4-a2a6-3990fac7463f
