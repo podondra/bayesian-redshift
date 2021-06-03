@@ -21,6 +21,10 @@ LINES = Dict("O VI" => 1033.82,
              "O III" => 1665.85,
              "Hα" => 6564.61)
 
+function get_filename(plate, mjd, fiberid)
+    @sprintf("%04d/spec-%04d-%05d-%04d.fits", plate, plate, mjd, fiberid)
+end
+
 function get_filepath(
         superset::String, plate::Int32, mjd::Int32, fiberid::Int32)::String
     @sprintf("data/%s/%04d/spec-%04d-%05d-%04d.fits",

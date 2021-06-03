@@ -28,7 +28,11 @@ import .Utils
         n_best, a_best = dls_fit(X, standard_flux, 2, 0.9)
 
         idx = (Utils.LOGLAMMIN - ε .< loglam) .& (loglam .< Utils.LOGLAMMAX + ε)
-        fluxes[:, i] = (standard_flux - X * a_best)[idx]
+        # pad with zeros
+        pixels = size(flux[idx], 1)
+        Δ_loglam = minimum(loglam) - Utils.LOGLAMMIN
+        offset = Δ_loglam <= 0 ? 1 : round(Int, Δ_loglam * 1e4) + 1
+        fluxes[offset:offset + pixels - 1, i] = (standard_flux - X * a_best)[idx]
     end
 
     write_dataset(fid, "flux", fluxes)

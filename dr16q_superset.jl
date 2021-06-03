@@ -5,7 +5,10 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 3621f840-5fcd-11eb-3be8-15ac4ab1b566
-using DataFrames, FITSIO, HDF5, Statistics, StatsPlots
+using DataFrames, DelimitedFiles, FITSIO, HDF5, Statistics, StatsPlots
+
+# ╔═╡ 856fa719-2ced-4878-b720-a844ef7e3afb
+include("Utils.jl"); import .Utils
 
 # ╔═╡ 05685b0c-5fcf-11eb-1f7f-c77372b9790e
 md"# DR16Q Superset Catalogue
@@ -45,6 +48,13 @@ md"> For objects that have a redshift in the columns `Z_VI` or `Z_10K` and a con
 > For analyses that require a homogeneous redshift over a large ensemble we recommend `Z_PCA`.
 > We ourselves use `Z_PCA in this paper as a redshift prior for calculating absolute i -band magnitudes, and for finding DLAs and BALs (§5)."
 
+# ╔═╡ ab0f8068-2304-43ab-973b-889022073032
+open("data/dr16q_superset.lst", "w") do file
+	filenames = Utils.get_filename.(
+		superset[:plate], superset[:mjd], superset[:fiberid])
+	writedlm(file, sort(filenames))
+end
+
 # ╔═╡ 282e7e62-5fd1-11eb-27ba-7d4d50fc1374
 @df superset[superset[:z] .> -1, :] histogram(
 	:z, xlabel="z", ylabel="Count", legend=:none)
@@ -70,24 +80,21 @@ wave_subset = leftjoin(superset, specobj, on=[:plate, :mjd, :fiberid])
 describe(wave_subset[[:wavemin, :wavemax]])
 
 # ╔═╡ ebad79d8-6148-11eb-20c6-e556e1e41fa3
-dropmissing!(wave_subset, [:wavemin, :wavemax])
+subset = dropmissing(wave_subset, [:wavemin, :wavemax])
 
 # ╔═╡ f9b6140a-6147-11eb-2b7c-4bdad13b9ace
 begin
-	wavemin = quantile(wave_subset[:wavemin], 0.999)
-	wavemax = quantile(wave_subset[:wavemax], 0.001)
+	wavemin = quantile(subset[:wavemin], 0.999)
+	wavemax = quantile(subset[:wavemax], 0.001)
 	logwavemin, logwavemax = log10(wavemin), log10(wavemax)
 	wavemin, wavemax, logwavemin, logwavemax
 end
 
-# ╔═╡ 6f90500a-6148-11eb-2645-61e9174bf9bd
-begin
-	wave_idx = (wave_subset[:wavemin] .<= wavemin) .& (wave_subset[:wavemax] .>= wavemax)
-	sum(wave_idx)
-end
+# ╔═╡ 64cf07d3-f853-4bab-b208-156104413b9d
+@df subset histogram(:wavemin, legend=:none, yaxis=:log)
 
-# ╔═╡ c8917b70-6148-11eb-038a-5d388d41b053
-subset = wave_subset[wave_idx, :]
+# ╔═╡ cc862a1a-ee95-4e83-8371-f4892a99d44a
+@df subset histogram(:wavemax, legend=:none, yaxis=:log)
 
 # ╔═╡ c66ea292-614c-11eb-2bc7-675d0b185c03
 md"## HDF5"
@@ -119,8 +126,10 @@ end
 # ╔═╡ Cell order:
 # ╟─05685b0c-5fcf-11eb-1f7f-c77372b9790e
 # ╠═3621f840-5fcd-11eb-3be8-15ac4ab1b566
+# ╠═856fa719-2ced-4878-b720-a844ef7e3afb
 # ╠═5e927e1c-5fcd-11eb-39cd-d19c696d924e
 # ╟─9e7bd468-5fcf-11eb-24d2-a349a471fc8e
+# ╠═ab0f8068-2304-43ab-973b-889022073032
 # ╠═282e7e62-5fd1-11eb-27ba-7d4d50fc1374
 # ╟─868625f0-5fd1-11eb-00dd-1f68c388ceb6
 # ╠═86d7f01c-613c-11eb-111f-1d47ffe5dfd3
@@ -128,8 +137,8 @@ end
 # ╠═62db6500-6145-11eb-16e4-af95d069068e
 # ╠═ebad79d8-6148-11eb-20c6-e556e1e41fa3
 # ╠═f9b6140a-6147-11eb-2b7c-4bdad13b9ace
-# ╠═6f90500a-6148-11eb-2645-61e9174bf9bd
-# ╠═c8917b70-6148-11eb-038a-5d388d41b053
+# ╠═64cf07d3-f853-4bab-b208-156104413b9d
+# ╠═cc862a1a-ee95-4e83-8371-f4892a99d44a
 # ╟─c66ea292-614c-11eb-2bc7-675d0b185c03
 # ╠═1881c878-6b6d-11eb-2f91-e984e48285cc
 # ╠═d89f83d6-614d-11eb-170b-e1a7febab65e

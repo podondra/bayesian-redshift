@@ -5,7 +5,10 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 2a2861e4-9d00-11eb-08fd-972e78fd9d18
-using DataFrames, FITSIO, HDF5, Statistics, StatsPlots
+using DataFrames, DelimitedFiles, FITSIO, HDF5, Printf, Statistics, StatsPlots
+
+# ╔═╡ 3e00dedc-ec3d-42c0-90c5-fefb92e33d03
+include("Utils.jl"); import .Utils
 
 # ╔═╡ 24ee40d4-7e63-4654-b112-b7ecb7b912d2
 md"# DR12Q Superset Catalogue
@@ -25,6 +28,13 @@ begin
 		z_pipe=read(superset_fits[2], "Z_PIPE"),
 		class_person=read(superset_fits[2], "CLASS_PERSON"),
 		z_conf_person=read(superset_fits[2], "Z_CONF_PERSON"))
+end
+
+# ╔═╡ a1fdcae4-ee1c-4592-86bc-0d8c14d6bc1c
+open("data/dr12q_superset.lst", "w") do file
+	filenames = Utils.get_filename.(
+		superset[:plate], superset[:mjd], superset[:fiberid])
+	writedlm(file, sort(filenames))
 end
 
 # ╔═╡ 43c3d594-e3a1-4af1-b093-f32fcd5b7e70
@@ -91,6 +101,15 @@ begin
 	sum(wavemin_zero_idx), sum(wavemax_zero_idx)
 end
 
+# ╔═╡ 2fa52dec-a6b9-418d-8b74-ef20b8960b72
+wave_subset[wavemin_zero_idx, :]
+
+# ╔═╡ 38816f32-3169-4ab6-8a12-83e44af14bb1
+@df wave_subset histogram(:wavemin, legend=:none, yaxis=:log)
+
+# ╔═╡ dc270353-68b4-4bd9-9db2-8b53db052a24
+@df wave_subset histogram(:wavemax, legend=:none, yaxis=:log)
+
 # ╔═╡ 900fd965-17ba-4a28-9e63-ca3dbc03975b
 begin
 	wavemin = quantile(wave_subset[.~wavemin_zero_idx, :wavemin], 0.99)
@@ -99,14 +118,11 @@ begin
 	wavemin, wavemax, logwavemin, logwavemax
 end
 
-# ╔═╡ 36e49ea5-41a7-4034-ad58-1354288e0cf0
-begin
-	wave_idx = (wave_subset[:wavemin] .<= 10 ^ 3.5832) .& (10 ^ 3.9583 .<= wave_subset[:wavemax])
-	sum(wave_idx)
-end
+# ╔═╡ 3a3c0cd0-a639-4a49-84a3-42d635e980dd
+final_subset = wave_subset[.~wavemin_zero_idx, :]
 
-# ╔═╡ 7e4db827-36f9-4aa0-a7a2-c213e6cd8126
-final_subset = wave_subset[wave_idx, :]
+# ╔═╡ 3c9586b0-5600-4dad-8ff0-c6996ed9d228
+size(superset, 1), size(subset, 1), size(final_subset, 1)
 
 # ╔═╡ 5d6d6774-0587-4649-a230-24a2519e81f0
 md"## HDF5"
@@ -133,7 +149,9 @@ end
 # ╔═╡ Cell order:
 # ╟─24ee40d4-7e63-4654-b112-b7ecb7b912d2
 # ╠═2a2861e4-9d00-11eb-08fd-972e78fd9d18
+# ╠═3e00dedc-ec3d-42c0-90c5-fefb92e33d03
 # ╠═6779d063-2ad5-4a09-9bb8-22cb97ba711d
+# ╠═a1fdcae4-ee1c-4592-86bc-0d8c14d6bc1c
 # ╠═43c3d594-e3a1-4af1-b093-f32fcd5b7e70
 # ╟─d93bd116-4d8e-42cb-a27c-9a7ee06d67dd
 # ╠═eb734e4c-0a9c-43c0-a9ff-fe1fab245783
@@ -147,9 +165,12 @@ end
 # ╠═3c9d8afd-e1e9-4cb4-8f5d-64dab93168e4
 # ╠═cc76dfe5-9e7c-49ef-ab72-97afed20ccb7
 # ╠═b319b899-622b-45ba-9451-b938a8f09ced
+# ╠═2fa52dec-a6b9-418d-8b74-ef20b8960b72
+# ╠═38816f32-3169-4ab6-8a12-83e44af14bb1
+# ╠═dc270353-68b4-4bd9-9db2-8b53db052a24
 # ╠═900fd965-17ba-4a28-9e63-ca3dbc03975b
-# ╠═36e49ea5-41a7-4034-ad58-1354288e0cf0
-# ╠═7e4db827-36f9-4aa0-a7a2-c213e6cd8126
+# ╠═3a3c0cd0-a639-4a49-84a3-42d635e980dd
+# ╠═3c9586b0-5600-4dad-8ff0-c6996ed9d228
 # ╟─5d6d6774-0587-4649-a230-24a2519e81f0
 # ╠═d6165f9c-41ee-4b3e-b7fb-004e3e4c4825
 # ╠═49ac94ac-1563-4516-97b5-744ea9d55f93
