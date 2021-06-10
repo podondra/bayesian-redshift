@@ -104,6 +104,15 @@ end
 # ╔═╡ 2fa52dec-a6b9-418d-8b74-ef20b8960b72
 wave_subset[wavemin_zero_idx, :]
 
+# ╔═╡ cabe94f8-0a81-4f81-ae4e-3ae93e00ba7a
+open("data/dr12q_superset.err", "w") do file
+	filenames = Utils.get_filename.(
+		wave_subset[wavemin_zero_idx, :plate],
+		wave_subset[wavemin_zero_idx, :mjd],
+		wave_subset[wavemin_zero_idx, :fiberid])
+	writedlm(file, sort(filenames))
+end
+
 # ╔═╡ 38816f32-3169-4ab6-8a12-83e44af14bb1
 @df wave_subset histogram(:wavemin, legend=:none, yaxis=:log)
 
@@ -166,6 +175,7 @@ end
 # ╠═cc76dfe5-9e7c-49ef-ab72-97afed20ccb7
 # ╠═b319b899-622b-45ba-9451-b938a8f09ced
 # ╠═2fa52dec-a6b9-418d-8b74-ef20b8960b72
+# ╠═cabe94f8-0a81-4f81-ae4e-3ae93e00ba7a
 # ╠═38816f32-3169-4ab6-8a12-83e44af14bb1
 # ╠═dc270353-68b4-4bd9-9db2-8b53db052a24
 # ╠═900fd965-17ba-4a28-9e63-ca3dbc03975b

@@ -17,31 +17,55 @@ using TensorBoardLogger
 include("Evaluation.jl")
 using .Evaluation
 
-export bayesian_model, regression_model, classification_model, classify, regress,
-    train_wrapper_regression!, train_wrapper_classification!
+export bayesian_model, regression_model, classification_model, classify,
+       regress, train_wrapper_regression!, train_wrapper_classification!
 
 function classification_model()
     Chain(
         Flux.unsqueeze(2),
-        Conv((3, ), 1 => 4, relu, pad=SamePad()),
-        Conv((3, ), 4 => 8, relu, pad=SamePad()),
+        Conv((3,), 1=>8, relu, pad=SamePad()),
+        MaxPool((2,)),
+        Conv((3,), 8=>16, relu, pad=SamePad()),
+        MaxPool((2,)),
+        Conv((3,), 16=>32, relu, pad=SamePad()),
+        Conv((3,), 32=>32, relu, pad=SamePad()),
+        MaxPool((2,)),
+        Conv((3,), 32=>64, relu, pad=SamePad()),
+        Conv((3,), 64=>64, relu, pad=SamePad()),
+        MaxPool((2,)),
+        Conv((3,), 64=>64, relu, pad=SamePad()),
+        Conv((3,), 64=>64, relu, pad=SamePad()),
+        MaxPool((2,)),
         flatten,
-        Dense(2048, 2048, relu),
+        Dense(512, 512, relu),
         Dropout(0.5),
-        Dense(2048, 2048, relu),
+        Dense(512, 512, relu),
         Dropout(0.5),
-        Dense(2048, 599))
+        Dense(512, 645))
 end
 
 function regression_model()
     Chain(
         Flux.unsqueeze(2),
-        Conv((3, ), 1 => 4, relu, pad=SamePad()),
-        Conv((3, ), 4 => 8, relu, pad=SamePad()),
+        Conv((3,), 1=>8, relu, pad=SamePad()),
+        MaxPool((2,)),
+        Conv((3,), 8=>16, relu, pad=SamePad()),
+        MaxPool((2,)),
+        Conv((3,), 16=>32, relu, pad=SamePad()),
+        Conv((3,), 32=>32, relu, pad=SamePad()),
+        MaxPool((2,)),
+        Conv((3,), 32=>64, relu, pad=SamePad()),
+        Conv((3,), 64=>64, relu, pad=SamePad()),
+        MaxPool((2,)),
+        Conv((3,), 64=>64, relu, pad=SamePad()),
+        Conv((3,), 64=>64, relu, pad=SamePad()),
+        MaxPool((2,)),
         flatten,
-        Dense(2048, 2048, relu),
-        Dense(2048, 2048, relu),
-        Dense(2048, 1))
+        Dense(512, 512, relu),
+        Dropout(0.5),
+        Dense(512, 512, relu),
+        Dropout(0.5),
+        Dense(512, 1))
 end
 
 function get_data()
@@ -62,8 +86,8 @@ function get_classification_data()
     y_validation = read(datafile, "z_vi_va")
     close(datafile)
 
-    EDGES = -0.005f0:0.01f0:5.985f0
-    LABELS = [@sprintf "%.2f" label for label in 0:0.01:5.98]
+    EDGES = -0.005f0:0.01f0:6.445f0
+    LABELS = [@sprintf "%.2f" label for label in 0:0.01:6.44]
     y_train_categorical = cut(y_train, EDGES, labels=LABELS)
     y_train_onehot = Flux.onehotbatch(y_train_categorical, LABELS)
 
@@ -77,7 +101,7 @@ end
 
 function classify(model, X)
     loader = DataLoader(X, batchsize=2048)
-    return reduce(vcat, [Flux.onecold(model(x), 0.00f0:0.01f0:5.98f0) for x in loader])
+    return reduce(vcat, [Flux.onecold(model(x), 0.00f0:0.01f0:6.44f0) for x in loader])
 end
 
 function train_with_early_stopping!(

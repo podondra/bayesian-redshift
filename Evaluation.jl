@@ -22,10 +22,4 @@ function median_Δv(y, ŷ)
     return median(compute_Δv(y, ŷ))
 end
 
-function mad_Δv(y, ŷ)
-    Δv = compute_Δv(y, ŷ)
-    median_Δv = median(Δv)
-    return median(abs.(Δv .- median_Δv))
-end
-
 end # module
