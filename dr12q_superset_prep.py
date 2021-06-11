@@ -4,7 +4,7 @@ from spectres import spectres
 
 
 LOGLAMMIN, LOGLAMMAX = 3.5832, 3.9583
-N_FEATURES = 256
+N_FEATURES = 512
 EPS = 0.005
 N_VAL, N_TEST = 50000, 50000
 
@@ -20,9 +20,10 @@ with h5py.File("data/dr12q_superset.hdf5", "r+") as datafile:
     loglam = np.linspace(LOGLAMMIN, LOGLAMMAX, n_waves)
     # EPS else will get nans in output
     new_loglam = np.linspace(LOGLAMMIN + EPS, LOGLAMMAX - EPS, N_FEATURES)
-    X = spectres(
-            new_loglam, loglam, fluxes,
-            verbose=True).astype(np.float32, copy=False)
+    #X = spectres(
+    #        new_loglam, loglam, fluxes,
+    #        verbose=True).astype(np.float32, copy=False)
+    X = fluxes
     X_dset = datafile.create_dataset("X", data=X)
 
     # split into training, validation and test set
