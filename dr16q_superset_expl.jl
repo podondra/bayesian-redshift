@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.4
+# v0.14.7
 
 using Markdown
 using InteractiveUtils
@@ -59,6 +59,9 @@ end
 @df superset[superset[:z] .> -1, :] histogram(
 	:z, xlabel="z", ylabel="Count", legend=:none)
 
+# ╔═╡ bc5639d8-6a96-4238-a8d6-b0aa55d6f133
+sum(superset[:z_vi] .> -1)
+
 # ╔═╡ 868625f0-5fd1-11eb-00dd-1f68c388ceb6
 md"## Wavelength Range"
 
@@ -78,6 +81,9 @@ wave_subset = leftjoin(superset, specobj, on=[:plate, :mjd, :fiberid])
 
 # ╔═╡ 62db6500-6145-11eb-16e4-af95d069068e
 describe(wave_subset[[:wavemin, :wavemax]])
+
+# ╔═╡ fdd1476f-52e0-47a2-b964-655d3be16f87
+wave_subset[ismissing.(wave_subset[:wavemin]), :]
 
 # ╔═╡ ebad79d8-6148-11eb-20c6-e556e1e41fa3
 subset = dropmissing(wave_subset, [:wavemin, :wavemax])
@@ -131,10 +137,12 @@ end
 # ╟─9e7bd468-5fcf-11eb-24d2-a349a471fc8e
 # ╠═ab0f8068-2304-43ab-973b-889022073032
 # ╠═282e7e62-5fd1-11eb-27ba-7d4d50fc1374
+# ╠═bc5639d8-6a96-4238-a8d6-b0aa55d6f133
 # ╟─868625f0-5fd1-11eb-00dd-1f68c388ceb6
 # ╠═86d7f01c-613c-11eb-111f-1d47ffe5dfd3
 # ╠═6cb7f21c-5fd2-11eb-324c-6755e1ad21db
 # ╠═62db6500-6145-11eb-16e4-af95d069068e
+# ╠═fdd1476f-52e0-47a2-b964-655d3be16f87
 # ╠═ebad79d8-6148-11eb-20c6-e556e1e41fa3
 # ╠═f9b6140a-6147-11eb-2b7c-4bdad13b9ace
 # ╠═64cf07d3-f853-4bab-b208-156104413b9d

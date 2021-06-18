@@ -35,6 +35,6 @@ import .Utils
         fluxes[offset:offset + pixels - 1, i] = (standard_flux - X * a_best)[idx]
     end
 
-    write_dataset(fid, "flux", fluxes)
+    write_dataset(fid, "X", fluxes)
     close(fid)
 end

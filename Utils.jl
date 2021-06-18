@@ -7,10 +7,9 @@ using Printf
 export LOGLAMMIN, LOGLAMMAX, get_filepath, get_spectrum, get_linear_spectrum,
        plot_spectral_lines!, plot_spectrum, polynomial_features
 
-ε = 0.001
 LOGLAMMIN, LOGLAMMAX = 3.5832, 3.9583
-N_FEATURES = 256
-LAMBDA = 10 .^ range(LOGLAMMIN + ε, LOGLAMMAX - ε, length=N_FEATURES)
+N_FEATURES = 3752
+LAMBDA = 10 .^ range(LOGLAMMIN, LOGLAMMAX, length=N_FEATURES)
 
 # http://classic.sdss.org/dr6/algorithms/linestable.html
 LINES = Dict("O VI" => 1033.82,
@@ -19,7 +18,8 @@ LINES = Dict("O VI" => 1033.82,
              "C III" => 1908.734,
              "Mg II" => 2799.117,
              "O III" => 1665.85,
-             "Hα" => 6564.61)
+             "Hα" => 6564.61,
+             "Hβ" => 4862.68)
 
 function get_filename(plate, mjd, fiberid)
     @sprintf("%04d/spec-%04d-%05d-%04d.fits", plate, plate, mjd, fiberid)

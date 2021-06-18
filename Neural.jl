@@ -88,6 +88,8 @@ function get_classification_data()
 
     EDGES = -0.005f0:0.01f0:6.445f0
     LABELS = [@sprintf "%.2f" label for label in 0:0.01:6.44]
+    # z smaller than 0 should be zero
+    y_train[y_train .< 0] .= 0
     y_train_categorical = cut(y_train, EDGES, labels=LABELS)
     y_train_onehot = Flux.onehotbatch(y_train_categorical, LABELS)
 

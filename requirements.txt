@@ -1,4 +1,0 @@
-cached-property==1.5.2
-h5py==3.1.0
-numpy==1.19.5
-spectres==2.1.1
