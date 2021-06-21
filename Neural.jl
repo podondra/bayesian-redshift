@@ -18,7 +18,8 @@ include("Evaluation.jl")
 using .Evaluation
 
 export bayesian_model, regression_model, classification_model, classify,
-       regress, train_wrapper_regression!, train_wrapper_classification!
+       regress, train_wrapper_regression!, train_wrapper_classification!,
+       train_wrapper_mc_dropout!
 
 function classification_model()
     Chain(
@@ -106,6 +107,16 @@ function classify(model, X)
     return reduce(vcat, [Flux.onecold(model(x), 0.00f0:0.01f0:6.44f0) for x in loader])
 end
 
+function mc_dropout(model, X; t)
+    trainmode!(model)
+    loader = DataLoader(X, batchsize=2048)
+    probabilities = zeros(645, size(X, 2)) |> gpu
+    for i in 1:t
+        probabilities += reduce(hcat, [softmax(model(x)) for x in loader])
+    end
+    return Flux.onecold(probabilities / t, 0.00f0:0.01f0:6.44f0)
+end
+
 function train_with_early_stopping!(
         model, X_train, y_train_encoded, y_train, X_validation, y_validation;
         loss, predict, batchsize, patience, weight_decay, device, file_model)
@@ -165,6 +176,17 @@ function train_wrapper_classification!(model, model_name; bs=256, wd=0)
         train_with_early_stopping!(
             model, get_classification_data()...,
             loss=logitcrossentropy, predict=classify,
+            batchsize=bs, patience=32, weight_decay=wd, device=gpu,
+            file_model="models/" * model_name * ".bson")
+    end
+end
+
+function train_wrapper_mc_dropout!(model, model_name; bs=256, wd=1e-4)
+    logger = TBLogger("runs/" * model_name, tb_overwrite)
+    with_logger(logger) do
+        train_with_early_stopping!(
+            model, get_classification_data()...,
+            loss=logitcrossentropy, predict=(model, X) -> mc_dropout(model, X, t=20),
             batchsize=bs, patience=32, weight_decay=wd, device=gpu,
             file_model="models/" * model_name * ".bson")
     end
