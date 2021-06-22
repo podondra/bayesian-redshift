@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.8
+# v0.14.7
 
 using Markdown
 using InteractiveUtils
@@ -156,12 +156,12 @@ end
 begin
 	ts = 0.001:0.001:maximum(mutual_infos)
 	y_10k = df_10k[!, :z_10k]
-	Plots.plot(
-		Plots.plot(
+	plot(
+		plot(
 			ts,
 			[sum(mutual_infos .< t) / length(mutual_infos) for t in ts],
 			label="Completeness", xlabel="Threshold"),
-		Plots.plot(
+		plot(
 			ts,
 			[Evaluation.cat_z_ratio(
 					y_10k[mutual_infos .< t], ẑ_bayes[mutual_infos .< t])
@@ -170,15 +170,37 @@ begin
 		layout=@layout [a; b])
 end
 
+# ╔═╡ 197b8de6-f7f5-4701-8e9e-220b781a0c1e
+md"Due to binning, there can be a situation where the redshift is on the edge.
+Therefore, the model is not sure into which bin to put its redshift.
+But, we can filter it."
+
+# ╔═╡ 94b7dc28-36d8-4a00-92fe-a7e1d65afdb0
+begin
+	idx_close = zeros(Bool, size(ẑs, 2))
+	for k in 1:size(ẑs, 2)
+		foo = sort(countmap(ẑs[:, k]))
+		if length(foo) > 1
+			bar = sort(collect(foo), by=x -> -x.second)[1:2]
+			baz = map(x -> x.first, bar)
+			idx_close[k] = abs(baz[1] - baz[2]) <= 0.015
+		end
+	end
+end
+
+# ╔═╡ 4c5f5b6f-8018-4ef8-91ac-6a4f47bd6afb
+sum((.~idx_close) .& (mutual_infos .> 0.4))
+
 # ╔═╡ ee0846f6-c87c-4c5f-9254-99ee70c010f8
 begin
 	# absolute error
 	Δv_bayes = Evaluation.compute_Δv(y_10k, ẑ_bayes)
 	#j = sortperm(mutual_infos)[end]
 	#j = rand((1:n)[Δv_bayes .> 3000])
-	j = rand((1:n)[mutual_infos .> 0.6])
-	#j = rand((1:n)[(mutual_infos .< 0.1) .& (Δv_bayes .> 3000)])
+	#j = rand((1:n)[mutual_infos .> 0.3])
+	#j = rand((1:n)[(mutual_infos .> 0.3) .& (Δv_bayes .> 3000)])
 	#j = rand((1:n)[(y_10k .< 0.1) .& (ẑ_bayes .> 0.5)])
+	j = rand((1:n)[(.~idx_close) .& (mutual_infos .< 0.1) .& (Δv_bayes .> 3000)])
 	
 	countmap(ẑs[:, j])
 end
@@ -191,7 +213,11 @@ begin
 	Utils.plot_spectrum(X_10k[:, j], title=title_bayes, legend=:none)
 	Utils.plot_spectral_lines!(y_10k[j])
 	Utils.plot_spectral_lines!(ẑ_bayes[j], color=:red, location=:bottom)
+	#Utils.plot_spectral_lines!(0.85, color=:red, location=:bottom)
 end
+
+# ╔═╡ b5c82204-c7ca-4c8f-a70c-ba14d35746f6
+sum(idx_close)
 
 # ╔═╡ Cell order:
 # ╠═bdb521fa-acd6-11eb-0d41-2d68a7abecb2
@@ -218,5 +244,9 @@ end
 # ╠═77108e12-ad9e-418c-bd02-194cb5a891c4
 # ╠═8928bf18-dfde-4f8b-a9dc-a70c14d52d84
 # ╠═b6a4ead6-aa18-4aa0-be28-50e698eae60c
+# ╠═4c5f5b6f-8018-4ef8-91ac-6a4f47bd6afb
 # ╠═ee0846f6-c87c-4c5f-9254-99ee70c010f8
 # ╠═9674fd8d-7d95-419e-95ce-8101b232e1dd
+# ╠═197b8de6-f7f5-4701-8e9e-220b781a0c1e
+# ╠═94b7dc28-36d8-4a00-92fe-a7e1d65afdb0
+# ╠═b5c82204-c7ca-4c8f-a70c-ba14d35746f6
