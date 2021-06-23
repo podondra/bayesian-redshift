@@ -2,10 +2,10 @@
 #SBATCH --partition=gpufast --gres=gpu:1 --time=4:00:00
 #SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=1
 #SBATCH --mem=128G
-#SBATCH --job-name=mc_dropout_model --output=misc/mc_dropout_model.out
+#SBATCH --job-name=dropout_model --output=misc/dropout_model.out
 #SBATCH --mail-user=podszond@fit.cvut.cz --mail-type=ALL
 
 module purge
 module load Julia/1.5.1-linux-x86_64
 
-srun julia --project --eval "include(\"Neural.jl\"); using .Neural; train_wrapper_mc_dropout!(classification_model(), \"mc_dropout_model\", wd=1e-4);"
+srun julia --project --eval "include(\"Neural.jl\"); using .Neural; train_wrapper_classification!(dropout_model(), \"dropout_model\", wd=1e-4);"

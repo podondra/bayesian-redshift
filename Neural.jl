@@ -17,7 +17,7 @@ using TensorBoardLogger
 include("Evaluation.jl")
 using .Evaluation
 
-export bayesian_model, regression_model, classification_model, classify,
+export dropout_model, regression_model, classification_model, classify,
        regress, train_wrapper_regression!, train_wrapper_classification!,
        train_wrapper_mc_dropout!
 
@@ -36,6 +36,38 @@ function classification_model()
         MaxPool((2,)),
         Conv((3,), 64=>64, relu, pad=SamePad()),
         Conv((3,), 64=>64, relu, pad=SamePad()),
+        MaxPool((2,)),
+        flatten,
+        Dense(7488, 512, relu),
+        Dropout(0.5),
+        Dense(512, 512, relu),
+        Dropout(0.5),
+        Dense(512, 645))
+end
+
+function dropout_model()
+    Chain(
+        Flux.unsqueeze(2),
+        Conv((3,), 1=>8, relu, pad=SamePad()),
+        Dropout(0.5),
+        MaxPool((2,)),
+        Conv((3,), 8=>16, relu, pad=SamePad()),
+        Dropout(0.5),
+        MaxPool((2,)),
+        Conv((3,), 16=>32, relu, pad=SamePad()),
+        Dropout(0.5),
+        Conv((3,), 32=>32, relu, pad=SamePad()),
+        Dropout(0.5),
+        MaxPool((2,)),
+        Conv((3,), 32=>64, relu, pad=SamePad()),
+        Dropout(0.5),
+        Conv((3,), 64=>64, relu, pad=SamePad()),
+        Dropout(0.5),
+        MaxPool((2,)),
+        Conv((3,), 64=>64, relu, pad=SamePad()),
+        Dropout(0.5),
+        Conv((3,), 64=>64, relu, pad=SamePad()),
+        Dropout(0.5),
         MaxPool((2,)),
         flatten,
         Dense(7488, 512, relu),
@@ -139,15 +171,15 @@ function train_with_early_stopping!(
         Flux.train!(loss_function, Θ, loader_train, optimizer)
         epoch += 1
 
-        ŷ_train = predict(model, X_train) |> cpu
         ŷ_validation = predict(model, X_validation) |> cpu
+        #ŷ_train = predict(model, X_train) |> cpu
 
-        rmse_train = rmse(y_train, ŷ_train)
         rmse_validation = rmse(y_validation, ŷ_validation)
-        @info "rmse" train=rmse_train validation=rmse_validation
-        cat_z_train = cat_z_ratio(y_train, ŷ_train)
+        #rmse_train = rmse(y_train, ŷ_train)
+        @info "rmse" validation=rmse_validation #train=rmse_train
         cat_z_validation = cat_z_ratio(y_validation, ŷ_validation)
-        @info "catastrophic z ratio" train=cat_z_train validation=cat_z_validation
+        #cat_z_train = cat_z_ratio(y_train, ŷ_train)
+        @info "catastrophic z ratio" validation=cat_z_validation #train=cat_z_train
 
         if cat_z_validation < cat_z_validation_star
             i = 0
