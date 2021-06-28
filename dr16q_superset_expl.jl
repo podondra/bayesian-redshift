@@ -32,7 +32,8 @@ begin
 		z_pipe=read(superset_fits[2], "Z_PIPE"),
 		z_pca=read(superset_fits[2], "Z_PCA"),
 		class_person=read(superset_fits[2], "CLASS_PERSON"),
-		z_conf=read(superset_fits[2], "Z_CONF"))
+		z_conf=read(superset_fits[2], "Z_CONF"),
+		sn_median_all=read(superset_fits[2], "SN_MEDIAN_ALL"))
 end
 
 # ╔═╡ 9e7bd468-5fcf-11eb-24d2-a349a471fc8e
@@ -51,16 +52,16 @@ md"> For objects that have a redshift in the columns `Z_VI` or `Z_10K` and a con
 # ╔═╡ ab0f8068-2304-43ab-973b-889022073032
 open("data/dr16q_superset.lst", "w") do file
 	filenames = Utils.get_filename.(
-		superset[:plate], superset[:mjd], superset[:fiberid])
+		superset.plate, superset.mjd, superset.fiberid)
 	writedlm(file, sort(filenames))
 end
 
 # ╔═╡ 282e7e62-5fd1-11eb-27ba-7d4d50fc1374
-@df superset[superset[:z] .> -1, :] histogram(
+@df superset[superset.z .> -1, :] histogram(
 	:z, xlabel="z", ylabel="Count", legend=:none)
 
 # ╔═╡ bc5639d8-6a96-4238-a8d6-b0aa55d6f133
-sum(superset[:z_vi] .> -1)
+sum(superset.z_vi .> -1)
 
 # ╔═╡ 868625f0-5fd1-11eb-00dd-1f68c388ceb6
 md"## Wavelength Range"
@@ -80,18 +81,18 @@ end
 wave_subset = leftjoin(superset, specobj, on=[:plate, :mjd, :fiberid])
 
 # ╔═╡ 62db6500-6145-11eb-16e4-af95d069068e
-describe(wave_subset[[:wavemin, :wavemax]])
+describe(wave_subset[!, [:wavemin, :wavemax]])
 
 # ╔═╡ fdd1476f-52e0-47a2-b964-655d3be16f87
-wave_subset[ismissing.(wave_subset[:wavemin]), :]
+wave_subset[ismissing.(wave_subset.wavemin), :]
 
 # ╔═╡ ebad79d8-6148-11eb-20c6-e556e1e41fa3
 subset = dropmissing(wave_subset, [:wavemin, :wavemax])
 
 # ╔═╡ f9b6140a-6147-11eb-2b7c-4bdad13b9ace
 begin
-	wavemin = quantile(subset[:wavemin], 0.999)
-	wavemax = quantile(subset[:wavemax], 0.001)
+	wavemin = quantile(subset.wavemin, 0.999)
+	wavemax = quantile(subset.wavemax, 0.001)
 	logwavemin, logwavemax = log10(wavemin), log10(wavemax)
 	wavemin, wavemax, logwavemin, logwavemax
 end
@@ -102,15 +103,18 @@ end
 # ╔═╡ cc862a1a-ee95-4e83-8371-f4892a99d44a
 @df subset histogram(:wavemax, legend=:none, yaxis=:log)
 
+# ╔═╡ 1855c0f1-6e9e-4ef2-b436-ce51d865f8ce
+@df subset histogram(:sn_median_all, xlabel="SN_MEDIAN_ALL")
+
 # ╔═╡ c66ea292-614c-11eb-2bc7-675d0b185c03
 md"## HDF5"
 
 # ╔═╡ 1881c878-6b6d-11eb-2f91-e984e48285cc
 begin
 	id = Matrix{Int32}(undef, 3, size(subset, 1))
-	id[1, :] = subset[:plate]
-	id[2, :] = subset[:mjd]
-	id[3, :] = subset[:fiberid]
+	id[1, :] = subset.plate
+	id[2, :] = subset.mjd
+	id[3, :] = subset.fiberid
 	id
 end
 
@@ -119,13 +123,14 @@ begin
 	# read-write, create file if not existing, preserve existing contents
 	fid = h5open("data/dr16q_superset.hdf5", "cw")
 	write_dataset(fid, "id", id)
-	write_dataset(fid, "z", convert(Vector{Float32}, subset[:z]))
-	write_dataset(fid, "source_z", subset[:source_z])
-	write_dataset(fid, "z_qn", convert(Vector{Float32}, subset[:z_qn]))
-	write_dataset(fid, "z_10k", convert(Vector{Float32}, subset[:z_10k]))
-	write_dataset(fid, "z_vi", convert(Vector{Float32}, subset[:z_vi]))
-	write_dataset(fid, "z_pipe", convert(Vector{Float32}, subset[:z_pipe]))
-	write_dataset(fid, "z_pca", convert(Vector{Float32}, subset[:z_pca]))
+	write_dataset(fid, "z", convert(Vector{Float32}, subset.z))
+	write_dataset(fid, "source_z", subset.source_z)
+	write_dataset(fid, "z_qn", convert(Vector{Float32}, subset.z_qn))
+	write_dataset(fid, "z_10k", convert(Vector{Float32}, subset.z_10k))
+	write_dataset(fid, "z_vi", convert(Vector{Float32}, subset.z_vi))
+	write_dataset(fid, "z_pipe", convert(Vector{Float32}, subset.z_pipe))
+	write_dataset(fid, "z_pca", convert(Vector{Float32}, subset.z_pca))
+	write_dataset(fid, "sn_median_all", subset.sn_median_all)
 	close(fid)
 end
 
@@ -147,6 +152,7 @@ end
 # ╠═f9b6140a-6147-11eb-2b7c-4bdad13b9ace
 # ╠═64cf07d3-f853-4bab-b208-156104413b9d
 # ╠═cc862a1a-ee95-4e83-8371-f4892a99d44a
+# ╠═1855c0f1-6e9e-4ef2-b436-ce51d865f8ce
 # ╟─c66ea292-614c-11eb-2bc7-675d0b185c03
 # ╠═1881c878-6b6d-11eb-2f91-e984e48285cc
 # ╠═d89f83d6-614d-11eb-170b-e1a7febab65e
