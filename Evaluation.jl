@@ -15,7 +15,7 @@ function compute_Δv(z_vi, z)
 end
 
 function cat_z_ratio(y, ŷ; threshold=3000)
-    return sum(compute_Δv(y, ŷ) .> threshold) / length(y)
+    return sum(compute_Δv(y, ŷ) .>= threshold) / length(y)
 end
 
 function median_Δv(y, ŷ)

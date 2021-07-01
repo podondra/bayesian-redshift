@@ -28,6 +28,8 @@ begin
 		source_z=read(superset_fits[2], "SOURCE_Z"),
 		z_qn=read(superset_fits[2], "Z_QN"),
 		z_10k=read(superset_fits[2], "Z_10K"),
+		z_conf_10k=read(superset_fits[2], "Z_CONF_10K"),
+		pipe_corr_10k=read(superset_fits[2], "PIPE_CORR_10K"),
 		z_vi=read(superset_fits[2], "Z_VI"),
 		z_pipe=read(superset_fits[2], "Z_PIPE"),
 		z_pca=read(superset_fits[2], "Z_PCA"),
@@ -127,6 +129,7 @@ begin
 	write_dataset(fid, "source_z", subset.source_z)
 	write_dataset(fid, "z_qn", convert(Vector{Float32}, subset.z_qn))
 	write_dataset(fid, "z_10k", convert(Vector{Float32}, subset.z_10k))
+	write_dataset(fid, "pipe_corr_10k", subset.pipe_corr_10k)
 	write_dataset(fid, "z_vi", convert(Vector{Float32}, subset.z_vi))
 	write_dataset(fid, "z_pipe", convert(Vector{Float32}, subset.z_pipe))
 	write_dataset(fid, "z_pca", convert(Vector{Float32}, subset.z_pca))

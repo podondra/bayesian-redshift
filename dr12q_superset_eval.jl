@@ -5,16 +5,22 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 21d5a8d1-d087-4598-851f-8cb8e67fee83
-begin
-	using BSON, DataFrames, FITSIO, Flux, HDF5, Printf, StatsBase, StatsPlots
-	include("Evaluation.jl"); using .Evaluation
-	include("Neural.jl"); using .Neural
-	include("Utils.jl"); using .Utils
-	Core.eval(Main, :(import Flux, NNlib))
-end
+using BSON, DataFrames, FITSIO, Flux, HDF5, Printf, StatsBase, StatsPlots
+
+# ╔═╡ 43f78d11-273e-46b7-b769-cd50bc4a9017
+include("Evaluation.jl"); import .Evaluation
+
+# ╔═╡ c02ec06f-451f-47d5-ae2e-bdcc60ff0a8f
+include("Neural.jl"); import .Neural
+
+# ╔═╡ 806aabf9-4823-4943-8a36-849a448d326d
+include("Utils.jl"); import .Utils
 
 # ╔═╡ ed4d438e-6aaa-11eb-051e-efe644cce631
 md"# SDSS DR12Q Superset Evaluation"
+
+# ╔═╡ 5529854c-5da3-4267-8af8-304090dd115d
+Core.eval(Main, :(import Flux, NNlib))
 
 # ╔═╡ 39ac64c5-8841-478c-89b3-85a76d3d7c01
 begin
@@ -138,35 +144,28 @@ begin
 	# cat. z
 	j = rand((1:size(id_valid, 2))[Δv_clf .> 3000])
 	# absolute error
-	j = sortperm(abs.(y_valid - ŷ_clf))[end]
+	#j = sortperm(abs.(y_valid - ŷ_clf))[end]
 
-	Utils.plot_spectrum(
-		X_valid[:, j], legend=:none,
-		title=@sprintf(
-			"z = %f; ẑ = %f; Δv = %f",
-			y_valid[j], ŷ_clf[j], Δv_clf[j]))
+	title = @sprintf("z = %f; ẑ = %f; Δv = %f", y_valid[j], ŷ_clf[j], Δv_clf[j])
+	Utils.plot_spectrum(X_valid[:, j], legend=:none, title=title)
 	Utils.plot_spectral_lines!(y_valid[j])
-	clf_plot = Utils.plot_spectral_lines!(
-		ŷ_clf[j], color=:red, location=:bottom)
-	plot(
-		clf_plot,
-		plot(Utils.get_linear_spectrum(
-				"Superset_DR12Q", id_valid[:, j]...)..., legend=:none),
-		layout=@layout [a; b])
+	Utils.plot_spectral_lines!(ŷ_clf[j], color=:red, location=:bottom)
 end
 
 # ╔═╡ bbf6a903-5abc-4faf-8963-b7824623a324
-md"## Grid Search"
+md"## Grid Search for ``\lambda``"
 
 # ╔═╡ 22a7b903-4267-439d-b469-37a80c53ddee
 begin
 	df = DataFrame(λ=[], rmse=[], median_Δv=[], cat_z_ratio=[])
-	exps = -10:-2
+	exps = -7:-2
 	for exp in exps
-		model_path = @sprintf "models/classification_1e%d.bson" exp
+		model_path = @sprintf("models/mc_dropout-wd=1e%d.bson", exp)
 		model = BSON.load(model_path)[:model] |> gpu
-		ŷ = Neural.classify(model, X_valid) |> cpu
-		push!(df, [
+		ŷ = Neural.mc_dropout(model, X_valid, T=20) |> cpu
+		push!(
+			df,
+			[
 				10.0 ^ exp,
 				Evaluation.rmse(y_valid, ŷ),
 				Evaluation.median_Δv(y_valid, ŷ),
@@ -175,49 +174,56 @@ begin
 	df
 end
 
+# ╔═╡ 595d5c12-4dec-4a89-a4f1-ceda001e0a64
+df.cat_z_ratio
+
 # ╔═╡ 92475d81-590b-4b0f-a53b-4fe9cabf8881
-scatter(df[:λ], df[:cat_z_ratio], xscale=:log, yscale=:log, legend=:none)
-
-# ╔═╡ fe9bf8ee-4701-4e10-937e-a9659fc1ea53
-md"## Baselines"
-
-# ╔═╡ 3cbc61c0-6d7a-46c9-a819-babba8690672
-Evaluation.rmse(dr12q_df[:z_vi], dr12q_df[:z_pipe]),
-Evaluation.median_Δv(dr12q_df[:z_vi], dr12q_df[:z_pipe]),
-Evaluation.cat_z_ratio(dr12q_df[:z_vi], dr12q_df[:z_pipe])
-
-# ╔═╡ 29bede71-3f12-4385-b4cc-ce4321811cde
-Evaluation.rmse(test_df[:z_vi], test_df[:z_pipe_dr16q]),
-Evaluation.median_Δv(test_df[:z_vi], test_df[:z_pipe_dr16q]),
-Evaluation.cat_z_ratio(test_df[:z_vi], test_df[:z_pipe_dr16q])
-
-# ╔═╡ f49227ae-5d16-43bd-b5fa-19e202e16b11
-Evaluation.rmse(test_df[:z_vi], test_df[:z_pca]),
-Evaluation.median_Δv(test_df[:z_vi], test_df[:z_pca]),
-Evaluation.cat_z_ratio(test_df[:z_vi], test_df[:z_pca])
-
-# ╔═╡ a7261394-a8bb-431a-a2c2-2eea931e2b32
-Evaluation.rmse(test_df[:z_vi], test_df[:z_qn]),
-Evaluation.median_Δv(test_df[:z_vi], test_df[:z_qn]),
-Evaluation.cat_z_ratio(test_df[:z_vi], test_df[:z_qn])
+scatter(df[!, :λ], df[!, :cat_z_ratio], xscale=:log, legend=:none)
 
 # ╔═╡ 662ec364-2329-474e-8d6e-ff5b75f90ccc
 md"## Evaluation on Test Set"
 
+# ╔═╡ 3899a96f-e6d3-4802-acca-836f2a7bd71c
+size(dr12q_df, 1), size(test_df, 1), size(dr12q_df, 1) - size(test_df, 1)
+
+# ╔═╡ 3cbc61c0-6d7a-46c9-a819-babba8690672
+Evaluation.rmse(dr12q_df[!, :z_vi], dr12q_df[!, :z_pipe]),
+Evaluation.median_Δv(dr12q_df[!, :z_vi], dr12q_df[!, :z_pipe]),
+Evaluation.cat_z_ratio(dr12q_df[!, :z_vi], dr12q_df[!, :z_pipe])
+
+# ╔═╡ 29bede71-3f12-4385-b4cc-ce4321811cde
+Evaluation.rmse(test_df[!, :z_vi], test_df[!, :z_pipe_dr16q]),
+Evaluation.median_Δv(test_df[!, :z_vi], test_df[!, :z_pipe_dr16q]),
+Evaluation.cat_z_ratio(test_df[!, :z_vi], test_df[!, :z_pipe_dr16q])
+
+# ╔═╡ f49227ae-5d16-43bd-b5fa-19e202e16b11
+Evaluation.rmse(test_df[!, :z_vi], test_df[!, :z_pca]),
+Evaluation.median_Δv(test_df[!, :z_vi], test_df[!, :z_pca]),
+Evaluation.cat_z_ratio(test_df[!, :z_vi], test_df[!, :z_pca])
+
+# ╔═╡ a7261394-a8bb-431a-a2c2-2eea931e2b32
+Evaluation.rmse(test_df[!, :z_vi], test_df[!, :z_qn]),
+Evaluation.median_Δv(test_df[!, :z_vi], test_df[!, :z_qn]),
+Evaluation.cat_z_ratio(test_df[!, :z_vi], test_df[!, :z_qn])
+
 # ╔═╡ dd5cec44-b54a-49d8-a535-b8f4b38729b7
 begin
-	final_model = BSON.load("models/classification_1e-4.bson")[:model] |> gpu
-	ŷ_test = Neural.classify(final_model, X_test) |> cpu
+	final_model = BSON.load("models/mc_dropout-wd=1e-4.bson")[:model] |> gpu
+	ŷ_test = Neural.mc_dropout(final_model, X_test, T=20)
 end
 
 # ╔═╡ 4008b28a-595d-481e-ad8b-7e8b3137124d
-Evaluation.rmse(dr12q_df[:z_vi], ŷ_test),
-Evaluation.median_Δv(dr12q_df[:z_vi], ŷ_test),
-Evaluation.cat_z_ratio(dr12q_df[:z_vi], ŷ_test)
+Evaluation.rmse(dr12q_df[!, :z_vi], ŷ_test),
+Evaluation.median_Δv(dr12q_df[!, :z_vi], ŷ_test),
+Evaluation.cat_z_ratio(dr12q_df[!, :z_vi], ŷ_test)
 
 # ╔═╡ Cell order:
 # ╟─ed4d438e-6aaa-11eb-051e-efe644cce631
 # ╠═21d5a8d1-d087-4598-851f-8cb8e67fee83
+# ╠═43f78d11-273e-46b7-b769-cd50bc4a9017
+# ╠═c02ec06f-451f-47d5-ae2e-bdcc60ff0a8f
+# ╠═806aabf9-4823-4943-8a36-849a448d326d
+# ╠═5529854c-5da3-4267-8af8-304090dd115d
 # ╠═39ac64c5-8841-478c-89b3-85a76d3d7c01
 # ╠═8643602a-66e9-11eb-3700-374047551428
 # ╟─646c8844-d25a-4453-a4d9-e6f6279c183b
@@ -235,12 +241,13 @@ Evaluation.cat_z_ratio(dr12q_df[:z_vi], ŷ_test)
 # ╠═8c3f2374-3c9e-4fa5-a685-f2026eb38476
 # ╟─bbf6a903-5abc-4faf-8963-b7824623a324
 # ╠═22a7b903-4267-439d-b469-37a80c53ddee
+# ╠═595d5c12-4dec-4a89-a4f1-ceda001e0a64
 # ╠═92475d81-590b-4b0f-a53b-4fe9cabf8881
-# ╟─fe9bf8ee-4701-4e10-937e-a9659fc1ea53
+# ╟─662ec364-2329-474e-8d6e-ff5b75f90ccc
+# ╠═3899a96f-e6d3-4802-acca-836f2a7bd71c
 # ╠═3cbc61c0-6d7a-46c9-a819-babba8690672
 # ╠═29bede71-3f12-4385-b4cc-ce4321811cde
 # ╠═f49227ae-5d16-43bd-b5fa-19e202e16b11
 # ╠═a7261394-a8bb-431a-a2c2-2eea931e2b32
-# ╟─662ec364-2329-474e-8d6e-ff5b75f90ccc
 # ╠═dd5cec44-b54a-49d8-a535-b8f4b38729b7
 # ╠═4008b28a-595d-481e-ad8b-7e8b3137124d
