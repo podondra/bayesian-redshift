@@ -45,6 +45,8 @@ begin
 		z_vi=read(datafile, "z_vi"),
 		z_qn=read(datafile, "z_qn"),
 		entropy=read(datafile, "entropy"),
+		mutual_information=read(datafile, "mutual_information"),
+		variation_ratio=read(datafile, "variation_ratio"),
 		sn=read(datafile, "sn_median_all"))
 	zs_pred = read(datafile, "zs_pred")
 	close(datafile)
@@ -196,8 +198,9 @@ md"## Utilisation of Uncertainties"
 # ╔═╡ 08a0f0ac-731c-41f5-909b-3b5d920567ec
 begin
 	entropy = df[:, :entropy]
-	#entropy[idx_edge] .= 0
+	entropy[idx_edge] .= 0
 	entropy = entropy[idx_10k]
+	histogram(entropy)
 end
 
 # ╔═╡ afc55a96-2c39-4155-835a-8d3f21840f87
@@ -216,17 +219,47 @@ preview_10k_idx(rand((1:n_10k)[idx_error]))
 # ╔═╡ ad6b8a37-e5a7-4fe0-b63a-5ab1e2b600fa
 preview_10k_idx(rand((1:n_10k)[idx_missing]))
 
+# ╔═╡ eac3b882-e6a6-4ee9-8685-396f23bf7589
+begin
+	mutual_information = df[:, :mutual_information]
+	mutual_information[idx_edge] .= 0
+	mutual_information = mutual_information[idx_10k]
+	histogram(mutual_information)
+end
+
+# ╔═╡ e71fb2a7-ffe1-4043-afec-d011907eba08
+begin
+	variation_ratio = df[:, :variation_ratio]
+	variation_ratio[idx_edge] .= 0
+	variation_ratio = variation_ratio[idx_10k]
+	histogram(variation_ratio)
+end
+
 # ╔═╡ 24cb3a20-9f22-424a-bba8-3dca7fac410d
 begin
 	model = BSON.load("models/classification_model.bson")[:model] |> gpu
-	p = softmax(Neural.forward_pass(model, X |> gpu))
-	std_entropy = p .* log.(p)
-	std_entropy[isnan.(std_entropy)] .= 0
-	std_entropy = dropdims(-sum(std_entropy, dims=1), dims=1)
+	p = softmax(Neural.forward_pass(model, X_10k |> gpu))
 end
 
 # ╔═╡ ed607b71-b6c5-4175-a375-05278a8f3c72
-histogram(std_entropy)
+begin
+	std_entropy = p .* log.(p)
+	std_entropy[isnan.(std_entropy)] .= 0
+	std_entropy = dropdims(-sum(std_entropy, dims=1), dims=1)
+
+	idx_edge_std = zeros(Bool, n_10k)
+	for k in 1:n_10k
+		idxs = sortperm(p[:, k])[1:2]
+		if abs(idxs[1] - idxs[2]) == 1
+			idx_edge_std[k] = true
+		end
+	end
+	sum(idx_edge_std)
+
+	std_entropy[idx_edge_std] .= 0
+
+	histogram(std_entropy)
+end
 
 # ╔═╡ 1a4c427e-54db-4f27-9c60-c5f1c0459d37
 n, 0.01 * n, 0.05 * n, 0.1 * n
@@ -237,20 +270,27 @@ n, 0.01 * n, 0.05 * n, 0.1 * n
 # ╔═╡ d2c25b73-2a9d-40db-a439-98599e80a33c
 begin
 	thresholds = 0.001:0.01:maximum(df.entropy)
-	coverages = [sum(df.entropy .< t) / n for t in thresholds]
-	std_coverages = [sum(std_entropy .< t) / n for t in thresholds]
-	cat_zs = 100 .* [
-		Evaluation.cat_z_ratio(z_10k[entropy .< t],	z_pred[entropy .< t])
-		for t in thresholds]
-	std_cat_zs = 100 .* [
-		Evaluation.cat_z_ratio(
-			z_10k[std_entropy[idx_10k] .< t],
-			z_pred[std_entropy[idx_10k] .< t])
-		for t in thresholds]
-	plot(thresholds, coverages, ylabel="Coverage", label="MC Dropout")
-	plot_coverages = plot!(thresholds, std_coverages, label="Std Dropout")
-	plot(thresholds, cat_zs, ylabel="Est. Cat. z Ratio", xlabel="Threshold", label="MC Dropout")
-	plot_cat_zs = plot!(thresholds, std_cat_zs, label="Std Dropout")
+
+	coverages_entr = [sum(entropy .< t) / n_10k for t in thresholds]
+	coverages_std_entr = [sum(std_entropy .< t) / n_10k for t in thresholds]
+	coverages_mi = [sum(mutual_information .< t) / n_10k for t in thresholds]
+	coverages_vr = [sum(variation_ratio .< t) / n_10k for t in thresholds]
+
+	cat_zs_entr = 100 .* [Evaluation.cat_z_ratio(z_10k[entropy .< t],	z_pred[entropy .< t]) for t in thresholds]
+	cat_zs_std_entr = 100 .* [Evaluation.cat_z_ratio(z_10k[std_entropy .< t], z_pred[std_entropy .< t]) for t in thresholds]
+	cat_zs_mi = 100 .* [Evaluation.cat_z_ratio(z_10k[mutual_information .< t],	z_pred[mutual_information .< t]) for t in thresholds]
+	cat_zs_vr = 100 .* [Evaluation.cat_z_ratio(z_10k[variation_ratio .< t],	z_pred[variation_ratio .< t]) for t in thresholds]
+
+	plot(thresholds, coverages_entr, ylabel="Coverage", label="MC Dropout")
+	plot!(thresholds, coverages_mi, label="MI")
+	plot!(thresholds, coverages_vr, label="VR")
+	plot_coverages = plot!(thresholds, coverages_std_entr, label="Std Dropout")
+
+	plot(thresholds, cat_zs_entr, ylabel="Est. Cat. z Ratio", xlabel="Threshold", label="MC Dropout")
+	plot!(thresholds, cat_zs_mi, label="MI")
+	plot!(thresholds, cat_zs_vr, label="VR")
+	plot_cat_zs = plot!(thresholds, cat_zs_std_entr, label="Std Dropout")
+
 	plot(plot_coverages, plot_cat_zs, layout=@layout [a; b])
 end
 
@@ -321,6 +361,8 @@ marginalhist(Δv_all, df.sn)
 # ╠═77108e12-ad9e-418c-bd02-194cb5a891c4
 # ╟─eb11930b-8f4f-4301-a462-a41fa54d980f
 # ╠═08a0f0ac-731c-41f5-909b-3b5d920567ec
+# ╠═eac3b882-e6a6-4ee9-8685-396f23bf7589
+# ╠═e71fb2a7-ffe1-4043-afec-d011907eba08
 # ╠═24cb3a20-9f22-424a-bba8-3dca7fac410d
 # ╠═ed607b71-b6c5-4175-a375-05278a8f3c72
 # ╠═1a4c427e-54db-4f27-9c60-c5f1c0459d37

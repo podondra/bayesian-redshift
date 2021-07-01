@@ -2,10 +2,10 @@
 #SBATCH --partition=gpufast --gres=gpu:1 --time=4:00:00
 #SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=1
 #SBATCH --mem=64G
-#SBATCH --job-name=dr16q_superset_entr --output=misc/dr16q_superset_entr.out
+#SBATCH --job-name=dr16q_superset_unce --output=misc/dr16q_superset_unce.out
 #SBATCH --mail-user=podszond@fit.cvut.cz --mail-type=ALL
 
 module purge
 module load Julia/1.5.1-linux-x86_64
 
-srun julia --project dr16q_superset_entr.jl
+srun julia --project dr16q_superset_unce.jl
