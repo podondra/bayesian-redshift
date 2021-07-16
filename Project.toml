@@ -1,6 +1,7 @@
 [deps]
 BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
 CFITSIO = "3b1b4be9-1499-4b22-8d78-7db3344d1961"
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CategoricalArrays = "324d7699-5711-5eae-9e2f-1d82baa6b597"
 Conda = "8f4d0f93-b110-5947-807f-2305c1781a2d"

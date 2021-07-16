@@ -5,7 +5,7 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ bdb521fa-acd6-11eb-0d41-2d68a7abecb2
-using BSON, DataFrames, Flux, HDF5, Printf, Statistics, StatsBase, StatsPlots
+using DataFrames, HDF5, Printf, Random, Statistics, StatsBase, StatsPlots
 
 # ╔═╡ 5c29de0c-4c3f-44ea-aea3-dbc0449a4a22
 include("Evaluation.jl"); import .Evaluation
@@ -17,10 +17,7 @@ include("Neural.jl"); import .Neural
 include("Utils.jl"); import .Utils
 
 # ╔═╡ fce2913d-6c91-492b-9b98-81f5c886c467
-md"# SDSS DR16Q Superset Evaluation"
-
-# ╔═╡ 330c18c3-3aba-48d0-ae9c-b3b859514235
-Core.eval(Main, :(import Flux, NNlib))
+md"# Generalisation to DR16Q Superset"
 
 # ╔═╡ 8c971f02-0dab-41d0-928b-7937052f7542
 plotly()
@@ -38,6 +35,7 @@ begin
 		z=read(datafile, "z"),
 		source=read(datafile, "source_z"),
 		z_pred=read(datafile, "z_pred"),
+		z_pred_std=read(datafile, "z_pred_std"),
 		z_10k = read(datafile, "z_10k"),
 		pipe_corr_10k = read(datafile, "pipe_corr_10k"),
 		z_pca = read(datafile, "z_pca"),
@@ -45,6 +43,7 @@ begin
 		z_vi=read(datafile, "z_vi"),
 		z_qn=read(datafile, "z_qn"),
 		entropy=read(datafile, "entropy"),
+		entropy_std=read(datafile, "entropy_std"),
 		mutual_information=read(datafile, "mutual_information"),
 		variation_ratio=read(datafile, "variation_ratio"),
 		sn=read(datafile, "sn_median_all"))
@@ -60,118 +59,134 @@ begin
 	density!(df.z_pred[idx_z], label="MC Dropout")
 end
 
+# ╔═╡ b6bc407f-2fd6-4739-ae1d-da96ff984526
+histogram(df.sn, xlabel="S/N", ylabel="Count")
+
 # ╔═╡ 076b15f3-12a7-4151-a52d-682edbb5dc7d
 function preview_idx(i)
 	Utils.plot_spectrum(X[:, i], legend=:none,
 		title=@sprintf(
-			"z = %.3f; source = %s; ẑ = %.3f; E = %.2f",
+			"z = %.3f; source = %s; ẑ = %.2f; E = %.1f",
 			df[i, :z], df[i, :source], df[i, :z_pred], df[i, :entropy]))
 	Utils.plot_spectral_lines!(df[i, :z])
 	Utils.plot_spectral_lines!(df[i, :z_pred], color=:red, location=:bottom)
 end
 
+# ╔═╡ 3a28c77a-5e9f-4ea0-9cb5-78dc32f2ad40
+md"## Correct Prediction"
+
+# ╔═╡ fc1e339e-9043-4336-aa50-91408025d330
+begin
+	Δv = Evaluation.compute_Δv(df.z, df.z_pred)
+	i_rnd = rand((1:n)[(Δv .< 3000) .& (df.sn .> 50) .& (df.z_pred .> 0.1)])
+	preview_idx(i_rnd)
+end
+
 # ╔═╡ de5b8936-7b64-43e0-8ab5-057da3f015fc
-md"## $z > 6.44$"
+md"## $z > 6.445$"
 
 # ╔═╡ 66851320-f094-4b66-a006-c9cfccc1a816
 begin
-	idx_high_z = df.z .> 6.44
-	sum(idx_high_z)
+	idx_high_z = df.z .> 6.445
+	countmap(df.source[idx_high_z])
 end
 
 # ╔═╡ 2f6d398e-5a9f-4f23-82a0-274603456444
 preview_idx(rand((1:n)[idx_high_z]))
 
-# ╔═╡ 22b4f5bb-ee29-4ac8-9d9e-585e0a5151ca
-countmap(df.source[idx_high_z])
-
-# ╔═╡ 78795ab0-7dae-42a6-accd-d2d468a7099c
+# ╔═╡ 44c86007-8ff8-4d29-b96f-4490d5e1b8fb
 begin
 	idx_vi = df.source .== "VI"
-	sum(idx_vi)
+	first_vi, second_vi = (1:n)[idx_high_z .& idx_vi]
+	id[:, idx_high_z .& idx_vi], df.entropy[idx_high_z .& idx_vi]
 end
 
-# ╔═╡ 5dea6670-b950-409f-adba-ce696dd99199
-sum(idx_high_z .& idx_vi)
+# ╔═╡ 85c11afd-00ed-4bb2-bd7a-5522d2b40132
+preview_idx(first_vi)
 
-# ╔═╡ 2c8fdfce-19f4-44cd-a43a-433a87ae962d
-df.entropy[idx_high_z .& idx_vi]
+# ╔═╡ 2de2465a-4470-4afa-94eb-785e8df97752
+preview_idx(second_vi)
 
-# ╔═╡ be1213c3-01ac-47d8-b9d3-c80d70f6457f
-preview_idx(rand((1:n)[idx_high_z .& idx_vi]))
-
-# ╔═╡ 7127b6f3-b4ec-4560-b7c2-e7e0261276cb
-md"## $\hat{z} = 0$"
-
-# ╔═╡ 1efcba1d-5e1e-4b12-939f-c7431cc3c0e5
+# ╔═╡ dca014ef-0caf-4af3-96ef-10215164fdf0
 begin
-	idx_z_pred_zero = df.z_pred .< 0.005
-	idx_z_zero = df.z .< 0.005
-	sum(idx_z_pred_zero), sum(idx_z_zero)
+	# seed from random.org
+	Random.seed!(49)
+    idx_rnd_high_z = rand((1:n)[idx_high_z .& .~idx_vi])
+	id[:, idx_rnd_high_z]
 end
 
-# ╔═╡ 8bc93fba-f600-4086-8f2f-393138246c67
-preview_idx(rand((1:n)[idx_z_pred_zero .& .~idx_z_zero]))
+# ╔═╡ 222d621a-6078-4498-8594-d30455ec01c0
+preview_idx(idx_rnd_high_z)
 
 # ╔═╡ b662295b-9bfd-4765-b20c-bd9185acc7e6
 md"## Random Visual Inspection of 10k Spectra"
 
 # ╔═╡ 53e40953-7e3f-44ea-a629-7dca5d1834b1
 begin
-	idx_10k = df.pipe_corr_10k .>= 0
-	n_10k = sum(idx_10k)
-	n_10k
+	idx_10k = df.z_10k .> -1
+	idx_10k_all = df.pipe_corr_10k .>= 0 
+	sum(idx_10k), sum(idx_10k_all)
 end
 
-# ╔═╡ 8c541607-4211-4338-a7b2-30cbe4be0c53
+# ╔═╡ 532e5b27-4595-49c6-a7b7-ad044fe8e62b
 begin
-	pipe_corr_10k = df.pipe_corr_10k[idx_10k]
+	idx_10k_missing = df.z_10k .<= -1
+	sum(idx_10k_all .& idx_10k_missing)
+end
+
+# ╔═╡ af07e531-cec1-4ee2-bb9c-916a8b038a7d
+countmap(df.z_10k[idx_10k_all .& idx_10k_missing])
+
+# ╔═╡ bda05a89-a68f-4067-8224-8994ee6943d1
+median(df.entropy[idx_10k]), median(df.entropy[idx_10k_all .& idx_10k_missing])
+
+# ╔═╡ 6e4b619e-ffad-4277-a6ef-5ba6ebd1bef0
+begin
+	z_10k = df.z_10k[idx_10k]
 	z_pred = df.z_pred[idx_10k]
 	z_pipe = df.z_pipe[idx_10k]
-
-	z_10k = df.z_10k[idx_10k]
-	# the two spectra has -999 so overflow to negative number
-	z_10k[z_10k .== -999.0] .= -1
-	idx_missing = z_10k .<= -1
-
-	# suppose we predict correctly those missing
-	#z_10k[idx_missing] = z_pred[idx_missing]
-
-	Δv = Evaluation.compute_Δv(z_10k, z_pred)
-	X_10k = X[:, idx_10k]
+	z_pca = df.z_pca[idx_10k]
+	z_qn = df.z_qn[idx_10k]
 end
-
-# ╔═╡ 71fa953c-2a6d-4002-8529-7672730a655e
-begin
-	idx_failure = (Δv .>= 3000.0)
-	idx_error = idx_missing .| idx_failure
-	sum(idx_missing), sum(idx_failure), sum(idx_error)
-end
-
-# ╔═╡ 101e78ea-98a2-452d-bed3-a41f544c8e49
-1 - sum(pipe_corr_10k) / n_10k
 
 # ╔═╡ 0211a7d5-f744-4331-a55c-6860716c2109
-Evaluation.cat_z_ratio(z_10k, z_pred)
+Evaluation.rmse(z_10k, z_pred), Evaluation.median_Δv(z_10k, z_pred), Evaluation.cat_z_ratio(z_10k, z_pred)
 
 # ╔═╡ cf7c4ece-6bf8-4e53-85c1-1acdb2d37be1
-Evaluation.cat_z_ratio(z_10k, z_pipe)
+Evaluation.rmse(z_10k, z_pipe), Evaluation.median_Δv(z_10k, z_pipe), Evaluation.cat_z_ratio(z_10k, z_pipe)
 
 # ╔═╡ dc462c4d-ec37-4459-87e6-87428f2229da
-Evaluation.cat_z_ratio(z_10k, df.z_pca[idx_10k])
+Evaluation.rmse(z_10k, z_pca), Evaluation.median_Δv(z_10k, z_pca), Evaluation.cat_z_ratio(z_10k, z_pca)
 
 # ╔═╡ b69e11ff-1249-43fb-a423-61efa0945030
-Evaluation.cat_z_ratio(z_10k, df.z_qn[idx_10k])
+Evaluation.rmse(z_10k, z_qn), Evaluation.median_Δv(z_10k, z_qn), Evaluation.cat_z_ratio(z_10k, z_qn)
 
-# ╔═╡ c6da5788-24fc-4cb0-add4-339965aa365c
-sum(abs.(z_pipe[idx_failure] .- z_pred[idx_failure]) .> 0.05)
+# ╔═╡ 573e6e02-a2a9-457f-b2fd-4acdd921c090
+md"## Suggestions of Redshifts"
+
+# ╔═╡ a3db9fd5-a9a1-46c3-9097-7573d48bc5df
+zs_pred
+
+# ╔═╡ c84f8e62-c1e4-4ea8-b69d-8d51175f10e3
+begin
+	i_sug = 54463
+	id[:, i_sug], df.source[i_sug]
+end
+
+# ╔═╡ b7e9879d-8c41-4130-bbc6-e14ba62b8f0e
+countmap(zs_pred[:, i_sug])
+
+# ╔═╡ b8c77084-6ee8-4615-96c7-deb317614e0c
+begin
+	title = @sprintf(
+		"z = %.3f; source = %s ẑ = %.2f; E = %.1f",
+		df[i_sug, :z], df[i_sug, :source], df[i_sug, :z_pred], df[i_sug, :entropy])
+	Utils.plot_spectrum(X[:, i_sug], legend=:none, title=title)
+	Utils.plot_spectral_lines!(0.08)
+end
 
 # ╔═╡ 197b8de6-f7f5-4701-8e9e-220b781a0c1e
-md"## On Edge Predictions
-
-Due to binning, there can be a situation where the redshift is on the edge.
-Therefore, the model is not sure into which bin to put its redshift.
-But, we can filter it."
+md"## On-Edge Predictions"
 
 # ╔═╡ 94b7dc28-36d8-4a00-92fe-a7e1d65afdb0
 begin
@@ -189,191 +204,136 @@ end
 begin
 	histogram(df.entropy, xlabel="Entropy", label="All")
 	histogram!(df.entropy[idx_edge], label="On-Edge")
-	histogram!(df.entropy[.~idx_edge], label="W\\out On-Edge")
+	histogram!(df.entropy[.~idx_edge], label="Without On-Edge")
 end
+
+# ╔═╡ e66137f7-2233-49bb-a6ed-a4aac6a3a319
+sum(idx_edge .& idx_10k)
+
+# ╔═╡ bc19f08c-839d-484c-98d0-4842a64799ee
+md"## Spectra with the Highest Entropy"
+
+# ╔═╡ 6648d01b-ce06-4fda-b339-022f68266bcc
+begin
+	entropy = df[:, :entropy]
+	entropy[idx_edge] .= 0
+	histogram(entropy)
+end
+
+# ╔═╡ bb0c2182-7309-4cf2-85f9-7462d41d4b22
+begin
+	i_high_entr = sortperm(entropy)[end - 2:end]
+	id[:, i_high_entr]
+end
+
+# ╔═╡ c75d0c17-6d3e-4c69-8abf-3ddae4d1e35f
+preview_idx(i_high_entr[1])
+
+# ╔═╡ dfe23e93-904b-481f-b247-158637cd361e
+preview_idx(i_high_entr[2])
+
+# ╔═╡ 75767b4a-cfc6-45e0-a270-5f237f135bed
+preview_idx(i_high_entr[3])
 
 # ╔═╡ eb11930b-8f4f-4301-a462-a41fa54d980f
 md"## Utilisation of Uncertainties"
 
 # ╔═╡ 08a0f0ac-731c-41f5-909b-3b5d920567ec
 begin
-	entropy = df[:, :entropy]
-	entropy[idx_edge] .= 0
-	entropy = entropy[idx_10k]
-	histogram(entropy)
-end
-
-# ╔═╡ afc55a96-2c39-4155-835a-8d3f21840f87
-function preview_10k_idx(i)
-	Utils.plot_spectrum(X_10k[:, i], legend=:none,
-		title=@sprintf(
-			"z_10k = %.3f; z_pipe = %.3f; ẑ = %.2f; E = %.2f",
-			z_10k[i], z_pipe[i], z_pred[i], entropy[i]))
-	Utils.plot_spectral_lines!(z_10k[i])
-	Utils.plot_spectral_lines!(z_pred[i], color=:red, location=:bottom)
-end
-
-# ╔═╡ 588c4f37-1691-4dcc-805d-9c169b04f1f0
-preview_10k_idx(rand((1:n_10k)[idx_error]))
-
-# ╔═╡ ad6b8a37-e5a7-4fe0-b63a-5ab1e2b600fa
-preview_10k_idx(rand((1:n_10k)[idx_missing]))
-
-# ╔═╡ eac3b882-e6a6-4ee9-8685-396f23bf7589
-begin
-	mutual_information = df[:, :mutual_information]
-	mutual_information[idx_edge] .= 0
-	mutual_information = mutual_information[idx_10k]
-	histogram(mutual_information)
-end
-
-# ╔═╡ e71fb2a7-ffe1-4043-afec-d011907eba08
-begin
-	variation_ratio = df[:, :variation_ratio]
-	variation_ratio[idx_edge] .= 0
-	variation_ratio = variation_ratio[idx_10k]
-	histogram(variation_ratio)
+	entropy_10k = entropy[idx_10k]
+	histogram(entropy_10k)
 end
 
 # ╔═╡ 24cb3a20-9f22-424a-bba8-3dca7fac410d
 begin
-	model = BSON.load("models/classification_model.bson")[:model] |> gpu
-	p = softmax(Neural.forward_pass(model, X_10k |> gpu))
+	z_pred_std = df.z_pred_std[idx_10k]
+	entropy_std = df.entropy_std
+	histogram(entropy_std)
 end
 
-# ╔═╡ ed607b71-b6c5-4175-a375-05278a8f3c72
+# ╔═╡ fa971ce4-7e96-4aab-9db5-392f0d5a1dfc
 begin
-	std_entropy = p .* log.(p)
-	std_entropy[isnan.(std_entropy)] .= 0
-	std_entropy = dropdims(-sum(std_entropy, dims=1), dims=1)
-
-	idx_edge_std = zeros(Bool, n_10k)
-	for k in 1:n_10k
-		idxs = sortperm(p[:, k])[1:2]
-		if abs(idxs[1] - idxs[2]) == 1
-			idx_edge_std[k] = true
-		end
-	end
-	sum(idx_edge_std)
-
-	std_entropy[idx_edge_std] .= 0
-
-	histogram(std_entropy)
+	entropy_10k_std = entropy_std[idx_10k]
+	histogram(entropy_10k_std)
 end
-
-# ╔═╡ 1a4c427e-54db-4f27-9c60-c5f1c0459d37
-n, 0.01 * n, 0.05 * n, 0.1 * n
-
-# ╔═╡ 35d20cf4-61bc-44d5-8299-51e9b62b26d5
-1 - (8581 / n)
 
 # ╔═╡ d2c25b73-2a9d-40db-a439-98599e80a33c
 begin
-	thresholds = 0.001:0.01:maximum(df.entropy)
+	ts = 0.001:0.01:maximum(entropy)
 
-	coverages_entr = [sum(entropy .< t) / n_10k for t in thresholds]
-	coverages_std_entr = [sum(std_entropy .< t) / n_10k for t in thresholds]
-	coverages_mi = [sum(mutual_information .< t) / n_10k for t in thresholds]
-	coverages_vr = [sum(variation_ratio .< t) / n_10k for t in thresholds]
+	coverages = [sum(entropy .< t) / n for t in ts]
+	coverages_std = [sum(entropy_std .< t) / n for t in ts]
 
-	cat_zs_entr = 100 .* [Evaluation.cat_z_ratio(z_10k[entropy .< t],	z_pred[entropy .< t]) for t in thresholds]
-	cat_zs_std_entr = 100 .* [Evaluation.cat_z_ratio(z_10k[std_entropy .< t], z_pred[std_entropy .< t]) for t in thresholds]
-	cat_zs_mi = 100 .* [Evaluation.cat_z_ratio(z_10k[mutual_information .< t],	z_pred[mutual_information .< t]) for t in thresholds]
-	cat_zs_vr = 100 .* [Evaluation.cat_z_ratio(z_10k[variation_ratio .< t],	z_pred[variation_ratio .< t]) for t in thresholds]
+	cat_zs = 100 .* [Evaluation.cat_z_ratio(
+			z_10k[entropy_10k .< t],
+			z_pred[entropy_10k .< t])
+		for t in ts]
+	cat_zs_std = 100 .* [Evaluation.cat_z_ratio(
+			z_10k[entropy_10k_std .< t],
+			z_pred_std[entropy_10k_std .< t])
+		for t in ts]
 
-	plot(thresholds, coverages_entr, ylabel="Coverage", label="MC Dropout")
-	plot!(thresholds, coverages_mi, label="MI")
-	plot!(thresholds, coverages_vr, label="VR")
-	plot_coverages = plot!(thresholds, coverages_std_entr, label="Std Dropout")
+	plot(ts, coverages, ylabel="Coverage", label="MC Dropout")
+	plot_coverages = plot!(ts, coverages_std, label="Std. Dropout")
 
-	plot(thresholds, cat_zs_entr, ylabel="Est. Cat. z Ratio", xlabel="Threshold", label="MC Dropout")
-	plot!(thresholds, cat_zs_mi, label="MI")
-	plot!(thresholds, cat_zs_vr, label="VR")
-	plot_cat_zs = plot!(thresholds, cat_zs_std_entr, label="Std Dropout")
+	plot(ts, cat_zs, ylabel="Est. Cat. z Ratio", label="MC Dropout")
+	plot_cat_zs = plot!(ts, cat_zs_std, xlabel="Threshold", label="Std. Dropout")
 
 	plot(plot_coverages, plot_cat_zs, layout=@layout [a; b])
 end
 
-# ╔═╡ 207a7bfe-c517-4fdf-b6a2-9da6a514e52d
-histogram(df.entropy[idx_10k], xlabel="Entropy", legend=:none)
-
-# ╔═╡ 8988a49e-e8ec-48de-b750-3106cfa4b0c1
-md"## Signal to Noise"
-
-# ╔═╡ 9085c100-8733-42a0-acde-f08864868eb0
-histogram(df.sn)
-
-# ╔═╡ 4efb1a5b-cb47-43dc-83c2-dc89a321624b
-cor(df.entropy, df.sn)
-
-# ╔═╡ 7838a5a5-a0b9-4c1b-a574-81f40d36e26f
-marginalhist(df.entropy, df.sn)
-
-# ╔═╡ 7fd52f8b-98b4-4229-9e48-294f4b762ee0
-Δv_all = Evaluation.compute_Δv(df.z, df.z_pred)
-
-# ╔═╡ 64b80d5c-baf5-4118-a72a-d0031d548a31
-cor(df.entropy[df.z .> 0.0], Δv_all[df.z .> 0.0])
-
-# ╔═╡ 759b4f08-ba9d-42f7-a89b-691beadb58d6
-Δv_all[Δv_all .< 0], df.z[Δv_all .< 0]
-
-# ╔═╡ 24cd4ec3-6a7a-4664-a4fb-ca9bbac3ed5c
-marginalhist(Δv_all, df.sn)
+# ╔═╡ 01a4659d-4b10-4532-8086-0bf22fbf4825
+n * 0.01, n * 0.05, n * 0.1
 
 # ╔═╡ Cell order:
 # ╟─fce2913d-6c91-492b-9b98-81f5c886c467
 # ╠═bdb521fa-acd6-11eb-0d41-2d68a7abecb2
-# ╠═330c18c3-3aba-48d0-ae9c-b3b859514235
 # ╠═8c971f02-0dab-41d0-928b-7937052f7542
 # ╠═5c29de0c-4c3f-44ea-aea3-dbc0449a4a22
 # ╠═58bb6e14-6261-45ff-b647-de2d63a4b129
 # ╠═62fd8899-7fe0-4d54-9326-79008c60140b
 # ╠═a13527ac-4670-4a2f-a390-17700d707705
 # ╠═d1770126-cb47-47ae-844a-268210927dfb
+# ╠═b6bc407f-2fd6-4739-ae1d-da96ff984526
 # ╠═076b15f3-12a7-4151-a52d-682edbb5dc7d
+# ╟─3a28c77a-5e9f-4ea0-9cb5-78dc32f2ad40
+# ╠═fc1e339e-9043-4336-aa50-91408025d330
 # ╟─de5b8936-7b64-43e0-8ab5-057da3f015fc
 # ╠═66851320-f094-4b66-a006-c9cfccc1a816
 # ╠═2f6d398e-5a9f-4f23-82a0-274603456444
-# ╠═22b4f5bb-ee29-4ac8-9d9e-585e0a5151ca
-# ╠═78795ab0-7dae-42a6-accd-d2d468a7099c
-# ╠═5dea6670-b950-409f-adba-ce696dd99199
-# ╠═2c8fdfce-19f4-44cd-a43a-433a87ae962d
-# ╠═be1213c3-01ac-47d8-b9d3-c80d70f6457f
-# ╟─7127b6f3-b4ec-4560-b7c2-e7e0261276cb
-# ╠═1efcba1d-5e1e-4b12-939f-c7431cc3c0e5
-# ╠═8bc93fba-f600-4086-8f2f-393138246c67
+# ╠═44c86007-8ff8-4d29-b96f-4490d5e1b8fb
+# ╠═85c11afd-00ed-4bb2-bd7a-5522d2b40132
+# ╠═2de2465a-4470-4afa-94eb-785e8df97752
+# ╠═dca014ef-0caf-4af3-96ef-10215164fdf0
+# ╠═222d621a-6078-4498-8594-d30455ec01c0
 # ╟─b662295b-9bfd-4765-b20c-bd9185acc7e6
 # ╠═53e40953-7e3f-44ea-a629-7dca5d1834b1
-# ╠═8c541607-4211-4338-a7b2-30cbe4be0c53
-# ╠═71fa953c-2a6d-4002-8529-7672730a655e
-# ╠═101e78ea-98a2-452d-bed3-a41f544c8e49
+# ╠═532e5b27-4595-49c6-a7b7-ad044fe8e62b
+# ╠═af07e531-cec1-4ee2-bb9c-916a8b038a7d
+# ╠═bda05a89-a68f-4067-8224-8994ee6943d1
+# ╠═6e4b619e-ffad-4277-a6ef-5ba6ebd1bef0
 # ╠═0211a7d5-f744-4331-a55c-6860716c2109
 # ╠═cf7c4ece-6bf8-4e53-85c1-1acdb2d37be1
 # ╠═dc462c4d-ec37-4459-87e6-87428f2229da
 # ╠═b69e11ff-1249-43fb-a423-61efa0945030
-# ╠═afc55a96-2c39-4155-835a-8d3f21840f87
-# ╠═588c4f37-1691-4dcc-805d-9c169b04f1f0
-# ╠═ad6b8a37-e5a7-4fe0-b63a-5ab1e2b600fa
-# ╠═c6da5788-24fc-4cb0-add4-339965aa365c
+# ╟─573e6e02-a2a9-457f-b2fd-4acdd921c090
+# ╠═a3db9fd5-a9a1-46c3-9097-7573d48bc5df
+# ╠═c84f8e62-c1e4-4ea8-b69d-8d51175f10e3
+# ╠═b7e9879d-8c41-4130-bbc6-e14ba62b8f0e
+# ╠═b8c77084-6ee8-4615-96c7-deb317614e0c
 # ╟─197b8de6-f7f5-4701-8e9e-220b781a0c1e
 # ╠═94b7dc28-36d8-4a00-92fe-a7e1d65afdb0
 # ╠═77108e12-ad9e-418c-bd02-194cb5a891c4
+# ╠═e66137f7-2233-49bb-a6ed-a4aac6a3a319
+# ╟─bc19f08c-839d-484c-98d0-4842a64799ee
+# ╠═6648d01b-ce06-4fda-b339-022f68266bcc
+# ╠═bb0c2182-7309-4cf2-85f9-7462d41d4b22
+# ╠═c75d0c17-6d3e-4c69-8abf-3ddae4d1e35f
+# ╠═dfe23e93-904b-481f-b247-158637cd361e
+# ╠═75767b4a-cfc6-45e0-a270-5f237f135bed
 # ╟─eb11930b-8f4f-4301-a462-a41fa54d980f
 # ╠═08a0f0ac-731c-41f5-909b-3b5d920567ec
-# ╠═eac3b882-e6a6-4ee9-8685-396f23bf7589
-# ╠═e71fb2a7-ffe1-4043-afec-d011907eba08
 # ╠═24cb3a20-9f22-424a-bba8-3dca7fac410d
-# ╠═ed607b71-b6c5-4175-a375-05278a8f3c72
-# ╠═1a4c427e-54db-4f27-9c60-c5f1c0459d37
-# ╠═35d20cf4-61bc-44d5-8299-51e9b62b26d5
+# ╠═fa971ce4-7e96-4aab-9db5-392f0d5a1dfc
 # ╠═d2c25b73-2a9d-40db-a439-98599e80a33c
-# ╠═207a7bfe-c517-4fdf-b6a2-9da6a514e52d
-# ╟─8988a49e-e8ec-48de-b750-3106cfa4b0c1
-# ╠═9085c100-8733-42a0-acde-f08864868eb0
-# ╠═4efb1a5b-cb47-43dc-83c2-dc89a321624b
-# ╠═7838a5a5-a0b9-4c1b-a574-81f40d36e26f
-# ╠═7fd52f8b-98b4-4229-9e48-294f4b762ee0
-# ╠═64b80d5c-baf5-4118-a72a-d0031d548a31
-# ╠═759b4f08-ba9d-42f7-a89b-691beadb58d6
-# ╠═24cd4ec3-6a7a-4664-a4fb-ca9bbac3ed5c
+# ╠═01a4659d-4b10-4532-8086-0bf22fbf4825
