@@ -273,17 +273,71 @@ begin
 			z_pred_std[entropy_10k_std .< t])
 		for t in ts]
 
-	plot(ts, coverages, ylabel="Coverage", label="MC Dropout")
+	plot(ts, coverages, ylabel="Coverage", label="MC Dropout", xlabel="Threshold")
 	plot_coverages = plot!(ts, coverages_std, label="Std. Dropout")
 
 	plot(ts, cat_zs, ylabel="Est. Cat. z Ratio", label="MC Dropout")
-	plot_cat_zs = plot!(ts, cat_zs_std, xlabel="Threshold", label="Std. Dropout")
+	plot_cat_zs = plot!(ts, cat_zs_std, label="Std. Dropout")
 
-	plot(plot_coverages, plot_cat_zs, layout=@layout [a; b])
+	plot(plot_cat_zs, plot_coverages, layout=@layout [a; b])
 end
 
 # ╔═╡ 01a4659d-4b10-4532-8086-0bf22fbf4825
-n * 0.01, n * 0.05, n * 0.1
+ceil(Int, n * 0.01), ceil(Int, n * 0.05), ceil(Int, n * 0.1)
+
+# ╔═╡ 406d2e59-6b1e-47ea-bb81-33a264e5134d
+begin
+	t_99 = 3.9602
+	n - sum(entropy .< t_99),
+	Evaluation.rmse(z_10k[entropy_10k .< t_99], z_pred[entropy_10k .< t_99]),
+	Evaluation.median_Δv(z_10k[entropy_10k .< t_99], z_pred[entropy_10k .< t_99]),
+	Evaluation.cat_z_ratio(z_10k[entropy_10k .< t_99], z_pred[entropy_10k .< t_99])
+end
+
+# ╔═╡ 85dae4e6-8455-45fa-93c0-9f47a2378386
+begin
+	t_99_std = 2.058565
+	n - sum(entropy_std .< t_99_std),
+	Evaluation.rmse(z_10k[entropy_10k_std .< t_99_std], z_pred_std[entropy_10k_std .< t_99_std]),
+	Evaluation.median_Δv(z_10k[entropy_10k_std .< t_99_std], z_pred_std[entropy_10k_std .< t_99_std]),
+	Evaluation.cat_z_ratio(z_10k[entropy_10k_std .< t_99_std], z_pred_std[entropy_10k_std .< t_99_std])
+end
+
+# ╔═╡ 8340562d-ae14-49ec-b950-aef0d69228ab
+begin
+	t_95 = 2.5564000
+	n - sum(entropy .< t_95),
+	Evaluation.rmse(z_10k[entropy_10k .< t_95], z_pred[entropy_10k .< t_95]),
+	Evaluation.median_Δv(z_10k[entropy_10k .< t_95], z_pred[entropy_10k .< t_95]),
+	Evaluation.cat_z_ratio(z_10k[entropy_10k .< t_95], z_pred[entropy_10k .< t_95])
+end
+
+# ╔═╡ 892dcd13-f929-4e15-aebe-46ed39b2ceb4
+begin
+	t_95_std = 1.1257656
+	n - sum(entropy_std .< t_95_std),
+	Evaluation.rmse(z_10k[entropy_10k_std .< t_95_std], z_pred_std[entropy_10k_std .< t_95_std]),
+	Evaluation.median_Δv(z_10k[entropy_10k_std .< t_95_std], z_pred_std[entropy_10k_std .< t_95_std]),
+	Evaluation.cat_z_ratio(z_10k[entropy_10k_std .< t_95_std], z_pred_std[entropy_10k_std .< t_95_std])
+end
+
+# ╔═╡ 427dc993-2271-4088-ac16-7b864587e737
+begin
+	t_90 = 1.72948
+	n - sum(entropy .< t_90),
+	Evaluation.rmse(z_10k[entropy_10k .< t_90], z_pred[entropy_10k .< t_90]),
+	Evaluation.median_Δv(z_10k[entropy_10k .< t_90], z_pred[entropy_10k .< t_90]),
+	Evaluation.cat_z_ratio(z_10k[entropy_10k .< t_90], z_pred[entropy_10k .< t_90])
+end
+
+# ╔═╡ cbf0aea7-8158-452c-bd43-cb5eb9d90aeb
+begin
+	t_90_std = 0.866325
+	n - sum(entropy_std .< t_90_std),
+	Evaluation.rmse(z_10k[entropy_10k_std .< t_90_std], z_pred_std[entropy_10k_std .< t_90_std]),
+	Evaluation.median_Δv(z_10k[entropy_10k_std .< t_90_std], z_pred_std[entropy_10k_std .< t_90_std]),
+	Evaluation.cat_z_ratio(z_10k[entropy_10k_std .< t_90_std], z_pred_std[entropy_10k_std .< t_90_std])
+end
 
 # ╔═╡ Cell order:
 # ╟─fce2913d-6c91-492b-9b98-81f5c886c467
@@ -337,3 +391,9 @@ n * 0.01, n * 0.05, n * 0.1
 # ╠═fa971ce4-7e96-4aab-9db5-392f0d5a1dfc
 # ╠═d2c25b73-2a9d-40db-a439-98599e80a33c
 # ╠═01a4659d-4b10-4532-8086-0bf22fbf4825
+# ╠═406d2e59-6b1e-47ea-bb81-33a264e5134d
+# ╠═85dae4e6-8455-45fa-93c0-9f47a2378386
+# ╠═8340562d-ae14-49ec-b950-aef0d69228ab
+# ╠═892dcd13-f929-4e15-aebe-46ed39b2ceb4
+# ╠═427dc993-2271-4088-ac16-7b864587e737
+# ╠═cbf0aea7-8158-452c-bd43-cb5eb9d90aeb
