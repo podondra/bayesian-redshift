@@ -104,8 +104,14 @@ end
 # ╔═╡ 85c11afd-00ed-4bb2-bd7a-5522d2b40132
 preview_idx(first_vi)
 
+# ╔═╡ ccc18e0e-cb0a-4000-9b32-a5e10e55ce8b
+df.z_pipe[first_vi]
+
 # ╔═╡ 2de2465a-4470-4afa-94eb-785e8df97752
 preview_idx(second_vi)
+
+# ╔═╡ f656275c-add4-417a-8529-a8880a8f1346
+df.z_pipe[second_vi]
 
 # ╔═╡ dca014ef-0caf-4af3-96ef-10215164fdf0
 begin
@@ -117,6 +123,15 @@ end
 
 # ╔═╡ 222d621a-6078-4498-8594-d30455ec01c0
 preview_idx(idx_rnd_high_z)
+
+# ╔═╡ 90bf5c5b-745b-4bb2-8aa8-11bf58125c0a
+begin
+	j = 1412574
+	id[:, j], countmap(zs_pred[:, j])
+end
+
+# ╔═╡ 020a43d8-57e7-4575-a5ce-0189f518a224
+preview_idx(j)
 
 # ╔═╡ b662295b-9bfd-4765-b20c-bd9185acc7e6
 md"## Random Visual Inspection of 10k Spectra"
@@ -161,6 +176,9 @@ Evaluation.rmse(z_10k, z_pca), Evaluation.median_Δv(z_10k, z_pca), Evaluation.c
 # ╔═╡ b69e11ff-1249-43fb-a423-61efa0945030
 Evaluation.rmse(z_10k, z_qn), Evaluation.median_Δv(z_10k, z_qn), Evaluation.cat_z_ratio(z_10k, z_qn)
 
+# ╔═╡ a1e01e27-5f81-467a-b6ca-4195737c7327
+histogram(z_10k, yscale=:log)
+
 # ╔═╡ 573e6e02-a2a9-457f-b2fd-4acdd921c090
 md"## Suggestions of Redshifts"
 
@@ -182,11 +200,14 @@ begin
 		"z = %.3f; source = %s ẑ = %.2f; E = %.1f",
 		df[i_sug, :z], df[i_sug, :source], df[i_sug, :z_pred], df[i_sug, :entropy])
 	Utils.plot_spectrum(X[:, i_sug], legend=:none, title=title)
-	Utils.plot_spectral_lines!(0.08)
+	Utils.plot_spectral_lines!(2.7)
 end
 
 # ╔═╡ 197b8de6-f7f5-4701-8e9e-220b781a0c1e
 md"## On-Edge Predictions"
+
+# ╔═╡ 045b634a-2aef-4252-ba7a-1a11690bfd33
+-(0.5 * log(0.5) + 0.5 * log(0.5))
 
 # ╔═╡ 94b7dc28-36d8-4a00-92fe-a7e1d65afdb0
 begin
@@ -357,9 +378,13 @@ end
 # ╠═2f6d398e-5a9f-4f23-82a0-274603456444
 # ╠═44c86007-8ff8-4d29-b96f-4490d5e1b8fb
 # ╠═85c11afd-00ed-4bb2-bd7a-5522d2b40132
+# ╠═ccc18e0e-cb0a-4000-9b32-a5e10e55ce8b
 # ╠═2de2465a-4470-4afa-94eb-785e8df97752
+# ╠═f656275c-add4-417a-8529-a8880a8f1346
 # ╠═dca014ef-0caf-4af3-96ef-10215164fdf0
 # ╠═222d621a-6078-4498-8594-d30455ec01c0
+# ╠═90bf5c5b-745b-4bb2-8aa8-11bf58125c0a
+# ╠═020a43d8-57e7-4575-a5ce-0189f518a224
 # ╟─b662295b-9bfd-4765-b20c-bd9185acc7e6
 # ╠═53e40953-7e3f-44ea-a629-7dca5d1834b1
 # ╠═532e5b27-4595-49c6-a7b7-ad044fe8e62b
@@ -370,12 +395,14 @@ end
 # ╠═cf7c4ece-6bf8-4e53-85c1-1acdb2d37be1
 # ╠═dc462c4d-ec37-4459-87e6-87428f2229da
 # ╠═b69e11ff-1249-43fb-a423-61efa0945030
+# ╠═a1e01e27-5f81-467a-b6ca-4195737c7327
 # ╟─573e6e02-a2a9-457f-b2fd-4acdd921c090
 # ╠═a3db9fd5-a9a1-46c3-9097-7573d48bc5df
 # ╠═c84f8e62-c1e4-4ea8-b69d-8d51175f10e3
 # ╠═b7e9879d-8c41-4130-bbc6-e14ba62b8f0e
 # ╠═b8c77084-6ee8-4615-96c7-deb317614e0c
 # ╟─197b8de6-f7f5-4701-8e9e-220b781a0c1e
+# ╠═045b634a-2aef-4252-ba7a-1a11690bfd33
 # ╠═94b7dc28-36d8-4a00-92fe-a7e1d65afdb0
 # ╠═77108e12-ad9e-418c-bd02-194cb5a891c4
 # ╠═e66137f7-2233-49bb-a6ed-a4aac6a3a319

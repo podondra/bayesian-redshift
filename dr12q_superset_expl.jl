@@ -33,7 +33,7 @@ end
 # ╔═╡ a1fdcae4-ee1c-4592-86bc-0d8c14d6bc1c
 open("data/dr12q_superset.lst", "w") do file
 	filenames = Utils.get_filename.(
-		superset[:plate], superset[:mjd], superset[:fiberid])
+		superset.plate, superset.mjd, superset.fiberid)
 	writedlm(file, sort(filenames))
 end
 
@@ -45,7 +45,7 @@ md"There are redshifts smaller than 0."
 
 # ╔═╡ eb734e4c-0a9c-43c0-a9ff-fe1fab245783
 begin
-	lt_zero_idx = superset[:z_vi] .< 0.0
+	lt_zero_idx = superset.z_vi .< 0.0
 	sum(lt_zero_idx), unique(superset[lt_zero_idx, :z_vi])
 end
 
@@ -54,7 +54,7 @@ md"`CLASS_PERSON` with value 1 or 4 and `Z_CONF_PERSON` with value 3 is `Star`, 
 
 # ╔═╡ 541e307d-daa7-492c-95b4-6f835252d4d8
 begin
-	gt_minus_one_idx = -1.0 .< superset[:z_vi]
+	gt_minus_one_idx = -1.0 .< superset.z_vi
 	superset[gt_minus_one_idx .& lt_zero_idx, :]
 end
 
@@ -63,7 +63,7 @@ md"For now leave them aside. It is small amout (6743) versus full superset (5468
 
 # ╔═╡ b5cd4071-9eed-4477-8f5c-e4f3331d055c
 begin
-	conf_z_idx = superset[:z_conf_person] .== 3
+	conf_z_idx = superset.z_conf_person .== 3
 	histogram(superset[.~conf_z_idx, :z_vi], xlabel="z", ylabel="Count", legend=:none)
 end
 
@@ -96,8 +96,8 @@ wave_subset = leftjoin(subset, specobj, on=[:plate, :mjd, :fiberid])
 
 # ╔═╡ b319b899-622b-45ba-9451-b938a8f09ced
 begin
-	wavemin_zero_idx = wave_subset[:wavemin] .== 0.0
-	wavemax_zero_idx = wave_subset[:wavemax] .== 0.0
+	wavemin_zero_idx = wave_subset.wavemin .== 0.0
+	wavemax_zero_idx = wave_subset.wavemax .== 0.0
 	sum(wavemin_zero_idx), sum(wavemax_zero_idx)
 end
 
@@ -139,9 +139,9 @@ md"## HDF5"
 # ╔═╡ d6165f9c-41ee-4b3e-b7fb-004e3e4c4825
 begin
 	id = Matrix{Int32}(undef, 3, size(final_subset, 1))
-	id[1, :] = final_subset[:plate]
-	id[2, :] = final_subset[:mjd]
-	id[3, :] = final_subset[:fiberid]
+	id[1, :] = final_subset.plate
+	id[2, :] = final_subset.mjd
+	id[3, :] = final_subset.fiberid
 	id
 end
 
@@ -150,8 +150,8 @@ begin
 	# read-write, create file if not existing, preserve existing contents
 	fid = h5open("data/dr12q_superset.hdf5", "cw")
 	write_dataset(fid, "id", id)
-	write_dataset(fid, "z_vi", convert(Vector{Float32}, final_subset[:z_vi]))
-	write_dataset(fid, "z_pipe", convert(Vector{Float32}, final_subset[:z_pipe]))
+	write_dataset(fid, "z_vi", convert(Vector{Float32}, final_subset.z_vi))
+	write_dataset(fid, "z_pipe", convert(Vector{Float32}, final_subset.z_pipe))
 	close(fid)
 end
 
