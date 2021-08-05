@@ -1,5 +1,6 @@
 /data/*
-!/data/spec.lst
+!/data/dr12q_superset.err
+!/data/dr16q_superset.mis
 /misc/
 /models/
 /runs/
