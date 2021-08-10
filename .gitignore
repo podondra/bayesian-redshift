@@ -1,5 +1,8 @@
 /data/*
 !/data/dr12q_superset.err
+!/data/dr12q_superset_train.lst
+!/data/dr12q_superset_valid.lst
+!/data/dr12q_superset_test.lst
 !/data/dr16q_superset.mis
 /misc/
 /runs/

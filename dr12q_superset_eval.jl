@@ -5,7 +5,7 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 21d5a8d1-d087-4598-851f-8cb8e67fee83
-using BSON, DataFrames, FITSIO, Flux, HDF5, Printf, StatsBase, StatsPlots
+using BSON, DataFrames, DelimitedFiles, FITSIO, Flux, HDF5, Printf, StatsBase, StatsPlots
 
 # ╔═╡ 43f78d11-273e-46b7-b769-cd50bc4a9017
 include("Evaluation.jl"); import .Evaluation
@@ -40,6 +40,7 @@ end
 # ╔═╡ 8643602a-66e9-11eb-3700-374047551428
 begin
 	dr12q_file = h5open("data/dr12q_superset.hdf5", "r")
+	id_train = read(dr12q_file, "id_tr")
 	y_train = read(dr12q_file, "z_vi_tr")
 
 	id_valid = read(dr12q_file, "id_va")
@@ -58,6 +59,27 @@ begin
 
 	close(dr12q_file)
 	test_df = dropmissing(leftjoin(dr12q_df, dr16q_df, on=[:plate, :mjd, :fiberid]))
+end
+
+# ╔═╡ aaae60cf-8275-488f-a98e-97dfe8a57890
+open("data/dr12q_superset_train.lst", "w") do file
+	filenames_train = Utils.get_filename.(
+		id_train[1, :], id_train[2, :], id_train[3, :])
+	writedlm(file, sort(filenames_train))
+end
+
+# ╔═╡ 0a862141-d497-47e4-90c6-b36756f3b76c
+open("data/dr12q_superset_valid.lst", "w") do file
+	filenames_valid = Utils.get_filename.(
+		id_valid[1, :], id_valid[2, :], id_valid[3, :])
+	writedlm(file, sort(filenames_valid))
+end
+
+# ╔═╡ 3288aeab-05c2-47c3-bd31-070bf0dbc43f
+open("data/dr12q_superset_test.lst", "w") do file
+	filenames_test = Utils.get_filename.(
+		id_test[1, :], id_test[2, :], id_test[3, :])
+	writedlm(file, sort(filenames_test))
 end
 
 # ╔═╡ 646c8844-d25a-4453-a4d9-e6f6279c183b
@@ -226,6 +248,9 @@ Evaluation.cat_z_ratio(dr12q_df[!, :z_vi], ŷ_test)
 # ╠═5529854c-5da3-4267-8af8-304090dd115d
 # ╠═39ac64c5-8841-478c-89b3-85a76d3d7c01
 # ╠═8643602a-66e9-11eb-3700-374047551428
+# ╠═aaae60cf-8275-488f-a98e-97dfe8a57890
+# ╠═0a862141-d497-47e4-90c6-b36756f3b76c
+# ╠═3288aeab-05c2-47c3-bd31-070bf0dbc43f
 # ╟─646c8844-d25a-4453-a4d9-e6f6279c183b
 # ╠═edd6e898-6797-11eb-2cee-791764fb425a
 # ╠═dcfade4f-12c3-4aa3-97e1-fb4c63f72cb4
