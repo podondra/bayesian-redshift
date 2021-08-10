@@ -14,7 +14,24 @@ The entropy enables us to
 (2.) do thresholding that can significantly reduce the number of incorrect redshift predictions.
 For example, if we exclude 10 per cent of the most uncertain predictions, only 1.03 per cent of redshifts are predicted incorrectly.
 
+## List of Files
+
+- `data/`: data directory
+- `models/`
+- `slurm/`: directory with batch scripts for slurm workload manager
+- `Evaluation.jl`
+- `Neural.jl`
+- `Utils.jl`
+- `dr12q_superset_eval.jl`
+- `dr12q_superset_expl.jl`
+- `dr12q_superset_extr.jl`
+- `dr16q_superset_entr.jl`: standard entropy from the classical convolutional neural network
+- `dr16q_superset_eval.jl`
+- `dr16q_superset_expl.jl`
+- `dr16q_superset_extr.jl`
+- `dr16q_superset_unce.jl`: uncertainty from the Bayesian convolutional neural network
+
 ## TODO list
 
-1. Update title and abstract.
-1. Provide a list of files.
+1. Update abstract.
+1. Provide a list of files with description.
