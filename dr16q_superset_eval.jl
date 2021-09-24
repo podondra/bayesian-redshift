@@ -32,20 +32,24 @@ begin
 		plate=id[1, :],
 		mjd=id[2, :],
 		fiberid=id[3, :],
-		z=read(datafile, "z"),
-		source=read(datafile, "source_z"),
 		z_pred=read(datafile, "z_pred"),
 		z_pred_std=read(datafile, "z_pred_std"),
-		z_10k = read(datafile, "z_10k"),
-		pipe_corr_10k = read(datafile, "pipe_corr_10k"),
-		z_pca = read(datafile, "z_pca"),
-		z_pipe = read(datafile, "z_pipe"),
-		z_vi=read(datafile, "z_vi"),
-		z_qn=read(datafile, "z_qn"),
 		entropy=read(datafile, "entropy"),
 		entropy_std=read(datafile, "entropy_std"),
 		mutual_information=read(datafile, "mutual_information"),
 		variation_ratio=read(datafile, "variation_ratio"),
+		z=read(datafile, "z"),
+		source_z=read(datafile, "source_z"),
+		z_vi=read(datafile, "z_vi"),
+		z_pipe=read(datafile, "z_pipe"),
+		zwarning=read(datafile, "zwarning"),
+		z_dr12q=read(datafile, "z_dr12q"),
+		z_dr7q_sch=read(datafile, "z_dr7q_sch"),
+		z_dr6q_hw=read(datafile, "z_dr6q_hw"),
+		z_10k=read(datafile, "z_10k"),
+		pipe_corr_10k=read(datafile, "pipe_corr_10k"),
+		z_pca=read(datafile, "z_pca"),
+		z_qn=read(datafile, "z_qn"),
 		sn=read(datafile, "sn_median_all"))
 	zs_pred = Float32.(read(datafile, "zs_pred"))
 	close(datafile)
@@ -68,12 +72,12 @@ md"## $z > 6.445$"
 # ╔═╡ 66851320-f094-4b66-a006-c9cfccc1a816
 begin
 	idx_high_z = df.z .> 6.445
-	countmap(df.source[idx_high_z])
+	countmap(df.source_z[idx_high_z])
 end
 
 # ╔═╡ 44c86007-8ff8-4d29-b96f-4490d5e1b8fb
 begin
-	idx_vi = df.source .== "VI"
+	idx_vi = df.source_z .== "VI"
 	first_vi, second_vi = (1:n)[idx_high_z .& idx_vi]
 	id[:, idx_high_z .& idx_vi], df.entropy[idx_high_z .& idx_vi]
 end
@@ -153,7 +157,7 @@ zs_pred
 # ╔═╡ c84f8e62-c1e4-4ea8-b69d-8d51175f10e3
 begin
 	i_sug = 54463
-	id[:, i_sug], df.source[i_sug]
+	id[:, i_sug], df.source_z[i_sug]
 end
 
 # ╔═╡ b7e9879d-8c41-4130-bbc6-e14ba62b8f0e
@@ -163,7 +167,7 @@ countmap(zs_pred[:, i_sug])
 begin
 	title = @sprintf(
 		"z = %.3f; source = %s ẑ = %.2f; E = %.1f",
-		df[i_sug, :z], df[i_sug, :source], df[i_sug, :z_pred], df[i_sug, :entropy])
+		df[i_sug, :z], df[i_sug, :source_z], df[i_sug, :z_pred], df[i_sug, :entropy])
 	Utils.plot_spectrum(X[:, i_sug], legend=:none, title=title)
 	Utils.plot_spectral_lines!(2.7)
 end
@@ -212,7 +216,7 @@ function preview_idx(i)
 		label=@sprintf("spec-%04d-%5d-%04d.fits", id[1, i], id[2, i], id[3, i]),
 		title=@sprintf(
 			"z = %.3f; source = %s; ẑ = %.2f; E = %.1f",
-			df[i, :z], df[i, :source], df[i, :z_pred], entropy[i]))
+			df[i, :z], df[i, :source_z], df[i, :z_pred], entropy[i]))
 	Utils.plot_spectral_lines!(df[i, :z])
 	Utils.plot_spectral_lines!(df[i, :z_pred], color=:red, location=:bottom)
 end
@@ -352,45 +356,65 @@ begin
 end
 
 # ╔═╡ 0320f4d6-d0cf-440f-b3c1-c405da499edd
-md"## Catalogue"
+md"## Catalogues"
 
 # ╔═╡ 0b9c530b-e7f3-4d07-b059-fe64f1d0cc0b
-catalogue = DataFrame(
-	plate=id[1, :],
-	mjd=id[2, :],
-	fiberid=id[3, :],
-	z=df[:, :z_pred],
-	entropy=df[:, :entropy],
-	z_1=zs_pred[1, :],
-	z_2=zs_pred[2, :],
-	z_3=zs_pred[3, :],
-	z_4=zs_pred[4, :],
-	z_5=zs_pred[5, :],
-	z_6=zs_pred[6, :],
-	z_7=zs_pred[7, :],
-	z_8=zs_pred[8, :],
-	z_9=zs_pred[9, :],
-	z_10=zs_pred[10, :],
-	z_11=zs_pred[11, :],
-	z_12=zs_pred[12, :],
-	z_13=zs_pred[13, :],
-	z_14=zs_pred[14, :],
-	z_15=zs_pred[15, :],
-	z_16=zs_pred[16, :],
-	z_17=zs_pred[17, :],
-	z_18=zs_pred[18, :],
-	z_19=zs_pred[19, :],
-	z_20=zs_pred[20, :],
-)
+begin
+	catalogue = DataFrame(
+		plate=id[1, :],
+		mjd=id[2, :],
+		fiberid=id[3, :],
+		z_pred=df[:, :z_pred],
+		entropy=entropy,
+		z_pred_1=zs_pred[1, :],
+		z_pred_2=zs_pred[2, :],
+		z_pred_3=zs_pred[3, :],
+		z_pred_4=zs_pred[4, :],
+		z_pred_5=zs_pred[5, :],
+		z_pred_6=zs_pred[6, :],
+		z_pred_7=zs_pred[7, :],
+		z_pred_8=zs_pred[8, :],
+		z_pred_9=zs_pred[9, :],
+		z_pred_10=zs_pred[10, :],
+		z_pred_11=zs_pred[11, :],
+		z_pred_12=zs_pred[12, :],
+		z_pred_13=zs_pred[13, :],
+		z_pred_14=zs_pred[14, :],
+		z_pred_15=zs_pred[15, :],
+		z_pred_16=zs_pred[16, :],
+		z_pred_17=zs_pred[17, :],
+		z_pred_18=zs_pred[18, :],
+		z_pred_19=zs_pred[19, :],
+		z_pred_20=zs_pred[20, :],
+		z=df[:, :z],
+		source_z=df[:, :source_z],
+		z_vi=df[:, :z_vi],
+		z_pipe=df[:, :z_pipe],
+		zwarning=df[:, :zwarning],
+		z_dr12q=df[:, :z_dr12q],
+		z_dr7q_sch=df[:, :z_dr7q_sch],
+		z_dr6q_hw=df[:, :z_dr6q_hw],
+		z_10k=df[:, :z_10k],
+		z_pca=df[:, :z_pca],
+		z_qn=df[:, :z_qn]
+	)
+	catalogue = sort(catalogue, :entropy)
+end
 
 # ╔═╡ 095af2bb-82aa-4659-b8a5-0bc7b47f174a
-CSV.write("data/dr16q_superset_redshifts.csv", catalogue)
+CSV.write("data/dr16q_superset_redshift.csv", catalogue)
+
+# ╔═╡ 8e460124-460d-47e4-9e26-07e8e138f24f
+begin
+	Δv = Evaluation.compute_Δv(df.z, df.z_pred)
+	catalogue_failures = catalogue[Δv .> 3000, :]
+end
+
+# ╔═╡ 0c6cbade-cd23-4a05-9e99-ccecf8df3696
+CSV.write("data/dr16q_superset_redshift_failures.csv", catalogue_failures)
 
 # ╔═╡ be9905a4-abcd-4fbb-9210-e0265c0167a9
 md"## Spectra for Appendix"
-
-# ╔═╡ 88b0000b-f0a3-4042-b822-f3c02888ca65
- Δv = Evaluation.compute_Δv(df.z, df.z_pred)
 
 # ╔═╡ 1c7936f0-c78f-4924-a867-a0ec0eb58176
 begin
@@ -596,8 +620,9 @@ index_superset(id[:, 44949]...)
 # ╟─0320f4d6-d0cf-440f-b3c1-c405da499edd
 # ╠═0b9c530b-e7f3-4d07-b059-fe64f1d0cc0b
 # ╠═095af2bb-82aa-4659-b8a5-0bc7b47f174a
+# ╠═8e460124-460d-47e4-9e26-07e8e138f24f
+# ╠═0c6cbade-cd23-4a05-9e99-ccecf8df3696
 # ╟─be9905a4-abcd-4fbb-9210-e0265c0167a9
-# ╠═88b0000b-f0a3-4042-b822-f3c02888ca65
 # ╠═1c7936f0-c78f-4924-a867-a0ec0eb58176
 # ╠═1a1edb76-72ee-4146-84da-eac0e227a259
 # ╟─a0733021-a008-4f0c-8432-9643a0edd1e9

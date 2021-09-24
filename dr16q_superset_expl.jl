@@ -26,15 +26,19 @@ begin
 		fiberid=read(superset_fits[2], "FIBERID"),
 		z=read(superset_fits[2], "Z"),
 		source_z=read(superset_fits[2], "SOURCE_Z"),
-		z_qn=read(superset_fits[2], "Z_QN"),
+		z_vi=read(superset_fits[2], "Z_VI"),
+		z_conf=read(superset_fits[2], "Z_CONF"),
+		z_pipe=read(superset_fits[2], "Z_PIPE"),
+		zwarning=read(superset_fits[2], "ZWARNING"),
+		z_dr12q=read(superset_fits[2], "Z_DR12Q"),
+		z_dr7q_sch=read(superset_fits[2], "Z_DR7Q_SCH"),
+		z_dr6q_hw=read(superset_fits[2], "Z_DR6Q_HW"),
 		z_10k=read(superset_fits[2], "Z_10K"),
 		z_conf_10k=read(superset_fits[2], "Z_CONF_10K"),
 		pipe_corr_10k=read(superset_fits[2], "PIPE_CORR_10K"),
-		z_vi=read(superset_fits[2], "Z_VI"),
-		z_pipe=read(superset_fits[2], "Z_PIPE"),
 		z_pca=read(superset_fits[2], "Z_PCA"),
+		z_qn=read(superset_fits[2], "Z_QN"),
 		class_person=read(superset_fits[2], "CLASS_PERSON"),
-		z_conf=read(superset_fits[2], "Z_CONF"),
 		sn_median_all=read(superset_fits[2], "SN_MEDIAN_ALL"))
 end
 
@@ -127,12 +131,16 @@ begin
 	write_dataset(fid, "id", id)
 	write_dataset(fid, "z", convert(Vector{Float32}, subset.z))
 	write_dataset(fid, "source_z", subset.source_z)
-	write_dataset(fid, "z_qn", convert(Vector{Float32}, subset.z_qn))
-	write_dataset(fid, "z_10k", convert(Vector{Float32}, subset.z_10k))
-	write_dataset(fid, "pipe_corr_10k", subset.pipe_corr_10k)
 	write_dataset(fid, "z_vi", convert(Vector{Float32}, subset.z_vi))
 	write_dataset(fid, "z_pipe", convert(Vector{Float32}, subset.z_pipe))
+	write_dataset(fid, "zwarning", subset.zwarning)
+	write_dataset(fid, "z_dr12q", convert(Vector{Float32}, subset.z_dr12q))
+	write_dataset(fid, "z_dr7q_sch", convert(Vector{Float32}, subset.z_dr7q_sch))
+	write_dataset(fid, "z_dr6q_hw", convert(Vector{Float32}, subset.z_dr6q_hw))
+	write_dataset(fid, "z_10k", convert(Vector{Float32}, subset.z_10k))
+	write_dataset(fid, "pipe_corr_10k", subset.pipe_corr_10k)
 	write_dataset(fid, "z_pca", convert(Vector{Float32}, subset.z_pca))
+	write_dataset(fid, "z_qn", convert(Vector{Float32}, subset.z_qn))
 	write_dataset(fid, "sn_median_all", subset.sn_median_all)
 	close(fid)
 end
