@@ -39,7 +39,8 @@ begin
 		z_pca=read(superset_fits[2], "Z_PCA"),
 		z_qn=read(superset_fits[2], "Z_QN"),
 		class_person=read(superset_fits[2], "CLASS_PERSON"),
-		sn_median_all=read(superset_fits[2], "SN_MEDIAN_ALL"))
+		sn_median_all=read(superset_fits[2], "SN_MEDIAN_ALL"),
+		is_qso_final=read(superset_fits[2], "IS_QSO_FINAL"))
 end
 
 # ╔═╡ 9e7bd468-5fcf-11eb-24d2-a349a471fc8e
@@ -142,6 +143,7 @@ begin
 	write_dataset(fid, "z_pca", convert(Vector{Float32}, subset.z_pca))
 	write_dataset(fid, "z_qn", convert(Vector{Float32}, subset.z_qn))
 	write_dataset(fid, "sn_median_all", subset.sn_median_all)
+	write_dataset(h, "is_qso_final", subset.is_qso_final)
 	close(fid)
 end
 

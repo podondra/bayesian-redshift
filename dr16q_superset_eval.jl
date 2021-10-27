@@ -50,7 +50,8 @@ begin
 		pipe_corr_10k=read(datafile, "pipe_corr_10k"),
 		z_pca=read(datafile, "z_pca"),
 		z_qn=read(datafile, "z_qn"),
-		sn=read(datafile, "sn_median_all"))
+		sn=read(datafile, "sn_median_all"),
+		is_qso_final=read(datafile, "is_qso_final"))
 	zs_pred = Float32.(read(datafile, "zs_pred"))
 	close(datafile)
 	df
@@ -215,8 +216,12 @@ function preview_idx(i)
 	Utils.plot_spectrum(X[:, i], legend=:bottomright,
 		label=@sprintf("spec-%04d-%5d-%04d.fits", id[1, i], id[2, i], id[3, i]),
 		title=@sprintf(
-			"z = %.3f; source = %s; ẑ = %.2f; E = %.1f",
-			df[i, :z], df[i, :source_z], df[i, :z_pred], entropy[i]))
+			"z = %.3f; source = %s; ẑ = %.2f; E = %.1f; QSO = %d",
+			df[i, :z],
+			df[i, :source_z],
+			df[i, :z_pred],
+			entropy[i],
+			df[i, :is_qso_final]))
 	Utils.plot_spectral_lines!(df[i, :z])
 	Utils.plot_spectral_lines!(df[i, :z_pred], color=:red, location=:bottom)
 end
@@ -364,7 +369,10 @@ begin
 		plate=id[1, :],
 		mjd=id[2, :],
 		fiberid=id[3, :],
-		z_pred=df[:, :z_pred],
+		z_pred=df.z_pred,
+		z=df.z,
+		source_z=df.source_z,
+		is_qso_final=df.is_qso_final,
 		entropy=entropy,
 		z_pred_1=zs_pred[1, :],
 		z_pred_2=zs_pred[2, :],
@@ -386,51 +394,31 @@ begin
 		z_pred_18=zs_pred[18, :],
 		z_pred_19=zs_pred[19, :],
 		z_pred_20=zs_pred[20, :],
-		z=df[:, :z],
-		source_z=df[:, :source_z],
-		z_vi=df[:, :z_vi],
-		z_pipe=df[:, :z_pipe],
-		zwarning=df[:, :zwarning],
-		z_dr12q=df[:, :z_dr12q],
-		z_dr7q_sch=df[:, :z_dr7q_sch],
-		z_dr6q_hw=df[:, :z_dr6q_hw],
-		z_10k=df[:, :z_10k],
-		z_pca=df[:, :z_pca],
-		z_qn=df[:, :z_qn]
-	)
-	catalogue = sort(catalogue, :entropy)
+		z_vi=df.z_vi,
+		z_pipe=df.z_pipe,
+		zwarning=df.zwarning,
+		z_dr12q=df.z_dr12q,
+		z_dr7q_sch=df.z_dr7q_sch,
+		z_dr6q_hw=df.z_dr6q_hw,
+		z_10k=df.z_10k,
+		z_pca=df.z_pca,
+		z_qn=df.z_qn)
 end
 
 # ╔═╡ 095af2bb-82aa-4659-b8a5-0bc7b47f174a
-CSV.write("data/dr16q_superset_redshift.csv", catalogue)
+CSV.write("data/dr16q_superset_redshift.csv", sort(catalogue, :entropy))
 
 # ╔═╡ 8e460124-460d-47e4-9e26-07e8e138f24f
 begin
 	Δv = Evaluation.compute_Δv(df.z, df.z_pred)
-	catalogue_failures = catalogue[Δv .> 3000, :]
+	catalogue_failures = sort(catalogue[Δv .> 3000, :], :entropy)
 end
 
 # ╔═╡ 0c6cbade-cd23-4a05-9e99-ccecf8df3696
-CSV.write("data/dr16q_superset_redshift_failures.csv", catalogue_failures)
+CSV.write("data/dr16q_superset_redshift_failure.csv", catalogue_failures)
 
 # ╔═╡ be9905a4-abcd-4fbb-9210-e0265c0167a9
 md"## Spectra for Appendix"
-
-# ╔═╡ 1c7936f0-c78f-4924-a867-a0ec0eb58176
-begin
-	superset_fits = FITS("data/DR16Q_Superset_v3.fits")
-	superset = DataFrame(
-		plate=read(superset_fits[2], "PLATE"),
-		mjd=read(superset_fits[2], "MJD"),
-		fiberid=read(superset_fits[2], "FIBERID"),
-		is_qso_final=read(superset_fits[2], "IS_QSO_FINAL"))
-end
-
-# ╔═╡ 1a1edb76-72ee-4146-84da-eac0e227a259
-function index_superset(plate, mjd, fiberid)
-	idx = (superset[!, :plate] .== plate) .& (superset[!, :mjd] .== mjd) .& (superset[!, :fiberid] .== fiberid)
-	return superset[idx, :]
-end
 
 # ╔═╡ a0733021-a008-4f0c-8432-9643a0edd1e9
 md"### Missed QSOs"
@@ -438,35 +426,20 @@ md"### Missed QSOs"
 # ╔═╡ cf446cac-4894-48b1-ac7d-d1254a439bc4
 (1:n)[(Δv .> 3000) .& (df.sn .> 25) .& (df.z .< 0.5) .& (entropy .< 1)]
 
-# ╔═╡ 84167eb3-176f-4dcf-9af8-f9c3d6fbf72f
+# ╔═╡ 9c06858d-335d-4349-9e0e-b7cbf17e1535
 preview_idx(170401)
-
-# ╔═╡ 1f64f989-463f-4fff-b0df-ae83bd3d5b42
-index_superset(id[:, 170401]...)
 
 # ╔═╡ 5397127b-4ca8-46aa-a9a9-b4ea1184dd8b
 preview_idx(1327825)
 
-# ╔═╡ 7c53466f-0aca-47c6-95be-2c18acb8ac03
-index_superset(id[:, 1327825]...)
-
 # ╔═╡ 03aa6613-2543-4878-85d8-6e176a817c4e
 preview_idx(1031686)
-
-# ╔═╡ 1814cb39-235d-4f39-bff1-87191f3ad91f
-index_superset(id[:, 1031686]...)
 
 # ╔═╡ cddb53b6-d408-4bc9-b537-4f8f407aa140
 preview_idx(114188)
 
-# ╔═╡ 77021341-031b-4b96-b049-38b70cb8038e
-index_superset(id[:, 114188]...)
-
 # ╔═╡ 5ef30517-fc7f-40bc-9243-26618985c357
 preview_idx(1113376)
-
-# ╔═╡ d1871a8c-12a7-4787-8963-3382076e63c7
-index_superset(id[:, 1113376]...)
 
 # ╔═╡ d128bcf6-fcb4-476f-bda3-4419c466d18d
 md"### Incorrect High $z$"
@@ -477,23 +450,29 @@ md"### Incorrect High $z$"
 # ╔═╡ 73301948-3fa8-4831-b5f0-8b4dcbf6f75f
 preview_idx(1433645)
 
-# ╔═╡ 7b91d890-6528-4ad9-9a38-af4569bb5769
-index_superset(id[:, 1433645]...)
-
 # ╔═╡ fb097f9a-9279-4688-ae6e-4144ab3d0dc5
 preview_idx(1436878)
-
-# ╔═╡ 9e20e851-9404-49a0-a4a5-6b32babc5e5a
-index_superset(id[:, 1436878]...)
 
 # ╔═╡ eb9573a0-de80-4ce9-a366-32e68aeb1343
 preview_idx(160337)
 
-# ╔═╡ 82e80991-f826-4b56-9360-cabad83c70e6
-index_superset(id[:, 160337]...)
-
 # ╔═╡ 8fb11698-8aa7-4eef-a024-4e1fa4584174
 md"### Stars"
+
+# ╔═╡ 4ccf3dfb-5a63-4b66-a4c0-ea5a5aa9d20b
+preview_idx(136790)
+
+# ╔═╡ ffc1830c-9aa9-4e76-bf33-2164b0ad784b
+df.sn[136790]
+
+# ╔═╡ ec3254d3-4221-4b00-a6e7-88844fe0104b
+(1:n)[(df.is_qso_final .== 1) .& (df.sn .> 25) .& (df.z_pred .< 0.005)]
+
+# ╔═╡ 53d39274-90d5-4a33-b019-dfdd125bb670
+preview_idx(343869)
+
+# ╔═╡ 4bae3c7c-3959-4499-ade7-57b4b713fbd9
+preview_idx(556255)
 
 # ╔═╡ a308b6e5-f822-4cd4-8fb3-a34c6fdf71bc
 (1:n)[(Δv .> 3000) .& (df.sn .> 25) .& (df.z_pred .< 0.005) .& (entropy .< 1)]
@@ -501,32 +480,17 @@ md"### Stars"
 # ╔═╡ f697939c-282b-4771-a973-c0a2d9bb6aef
 preview_idx(1433649)
 
-# ╔═╡ 1bb6df4f-c5be-4225-910e-71326cec9c17
-index_superset(id[:, 1433649]...)
-
 # ╔═╡ e70acd20-97f3-49be-b294-33792389e5bd
 preview_idx(202316)
-
-# ╔═╡ f78500eb-0e64-4cca-ba72-f41d387413f6
-index_superset(id[:, 202316]...)
 
 # ╔═╡ 3e400232-36ae-45f7-80e0-5697860f6609
 preview_idx(534267)
 
-# ╔═╡ 78552b47-34bf-4c5d-82b3-36807e020e93
-index_superset(id[:, 534267]...)
-
 # ╔═╡ 49a5700d-c61a-4c35-a77a-13653787baea
 preview_idx(267587)
 
-# ╔═╡ 507b60d9-44de-4fb7-b40d-1f74ca2986b8
-index_superset(id[:, 267587]...)
-
 # ╔═╡ 51f681c4-e67b-43c8-b656-c94a689a0305
 preview_idx(1344651)
-
-# ╔═╡ 48d7d0ed-e382-4596-888c-233d9041c206
-index_superset(id[:, 1344651]...)
 
 # ╔═╡ 16ecba58-89fc-443c-a1bc-05a84199e928
 md"### Error with High Entropy"
@@ -540,20 +504,11 @@ end
 # ╔═╡ 932bc26e-7d05-4866-929f-869ab7e4e6a6
 preview_idx(66523)
 
-# ╔═╡ 29ba1627-85bf-4d01-9e40-d4a244595577
-index_superset(id[:, 66523]...)
-
 # ╔═╡ ba4ea09a-5e02-41a0-803a-c5d31848b61e
 preview_idx(1359912)
 
-# ╔═╡ 4330ae1f-d170-4c92-ba69-88ec9d3523cd
-index_superset(id[:, 1359912]...)
-
 # ╔═╡ 7aa58872-eec9-4283-b357-18b6f502dfa8
 preview_idx(44949)
-
-# ╔═╡ 74b6857e-5b79-408f-bf17-7ccaf7100e8a
-index_superset(id[:, 44949]...)
 
 # ╔═╡ Cell order:
 # ╟─fce2913d-6c91-492b-9b98-81f5c886c467
@@ -623,45 +578,32 @@ index_superset(id[:, 44949]...)
 # ╠═8e460124-460d-47e4-9e26-07e8e138f24f
 # ╠═0c6cbade-cd23-4a05-9e99-ccecf8df3696
 # ╟─be9905a4-abcd-4fbb-9210-e0265c0167a9
-# ╠═1c7936f0-c78f-4924-a867-a0ec0eb58176
-# ╠═1a1edb76-72ee-4146-84da-eac0e227a259
 # ╟─a0733021-a008-4f0c-8432-9643a0edd1e9
 # ╠═cf446cac-4894-48b1-ac7d-d1254a439bc4
-# ╠═84167eb3-176f-4dcf-9af8-f9c3d6fbf72f
-# ╠═1f64f989-463f-4fff-b0df-ae83bd3d5b42
+# ╠═9c06858d-335d-4349-9e0e-b7cbf17e1535
 # ╠═5397127b-4ca8-46aa-a9a9-b4ea1184dd8b
-# ╠═7c53466f-0aca-47c6-95be-2c18acb8ac03
 # ╠═03aa6613-2543-4878-85d8-6e176a817c4e
-# ╠═1814cb39-235d-4f39-bff1-87191f3ad91f
 # ╠═cddb53b6-d408-4bc9-b537-4f8f407aa140
-# ╠═77021341-031b-4b96-b049-38b70cb8038e
 # ╠═5ef30517-fc7f-40bc-9243-26618985c357
-# ╠═d1871a8c-12a7-4787-8963-3382076e63c7
 # ╟─d128bcf6-fcb4-476f-bda3-4419c466d18d
 # ╠═bb66f1f9-4458-4463-9ff4-1322a9d38904
 # ╠═73301948-3fa8-4831-b5f0-8b4dcbf6f75f
-# ╠═7b91d890-6528-4ad9-9a38-af4569bb5769
 # ╠═fb097f9a-9279-4688-ae6e-4144ab3d0dc5
-# ╠═9e20e851-9404-49a0-a4a5-6b32babc5e5a
 # ╠═eb9573a0-de80-4ce9-a366-32e68aeb1343
-# ╠═82e80991-f826-4b56-9360-cabad83c70e6
 # ╟─8fb11698-8aa7-4eef-a024-4e1fa4584174
+# ╠═4ccf3dfb-5a63-4b66-a4c0-ea5a5aa9d20b
+# ╠═ffc1830c-9aa9-4e76-bf33-2164b0ad784b
+# ╠═ec3254d3-4221-4b00-a6e7-88844fe0104b
+# ╠═53d39274-90d5-4a33-b019-dfdd125bb670
+# ╠═4bae3c7c-3959-4499-ade7-57b4b713fbd9
 # ╠═a308b6e5-f822-4cd4-8fb3-a34c6fdf71bc
 # ╠═f697939c-282b-4771-a973-c0a2d9bb6aef
-# ╠═1bb6df4f-c5be-4225-910e-71326cec9c17
 # ╠═e70acd20-97f3-49be-b294-33792389e5bd
-# ╠═f78500eb-0e64-4cca-ba72-f41d387413f6
 # ╠═3e400232-36ae-45f7-80e0-5697860f6609
-# ╠═78552b47-34bf-4c5d-82b3-36807e020e93
 # ╠═49a5700d-c61a-4c35-a77a-13653787baea
-# ╠═507b60d9-44de-4fb7-b40d-1f74ca2986b8
 # ╠═51f681c4-e67b-43c8-b656-c94a689a0305
-# ╠═48d7d0ed-e382-4596-888c-233d9041c206
 # ╟─16ecba58-89fc-443c-a1bc-05a84199e928
 # ╠═19b216d2-4e99-46d3-8123-fc462aeaaf94
 # ╠═932bc26e-7d05-4866-929f-869ab7e4e6a6
-# ╠═29ba1627-85bf-4d01-9e40-d4a244595577
 # ╠═ba4ea09a-5e02-41a0-803a-c5d31848b61e
-# ╠═4330ae1f-d170-4c92-ba69-88ec9d3523cd
 # ╠═7aa58872-eec9-4283-b357-18b6f502dfa8
-# ╠═74b6857e-5b79-408f-bf17-7ccaf7100e8a
