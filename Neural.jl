@@ -17,12 +17,21 @@ using TensorBoardLogger
 include("Evaluation.jl")
 using .Evaluation
 
-export classification_model, regression_model,
+export classification_fc, classification_model, regression_model, regression_fc,
        classify, mc_dropout, regress,
        train_wrapper_regression!, train_wrapper_classification!, train_wrapper_mc_dropout!
 
 const LABELS = 0.00f0:0.01f0:6.44f0
 const N_LABELS = length(LABELS)
+
+function classification_fc()
+    Chain(
+        Dense(3752, 512, relu),
+        Dropout(0.5),
+        Dense(512, 512, relu),
+        Dropout(0.5),
+        Dense(512, N_LABELS))
+end
 
 function classification_model()
     Chain(
@@ -46,6 +55,15 @@ function classification_model()
         Dense(512, 512, relu),
         Dropout(0.5),
         Dense(512, N_LABELS))
+end
+
+function regression_fc()
+    Chain(
+        Dense(3752, 512, relu),
+        Dropout(0.5),
+        Dense(512, 512, relu),
+        Dropout(0.5),
+        Dense(512, 1))
 end
 
 function regression_model()
@@ -144,14 +162,14 @@ function train_with_early_stopping!(
         epoch += 1
 
         ŷ_validation = predict(model, X_validation)
-        #ŷ_train = predict(model, X_train)
+        ŷ_train = predict(model, X_train)
 
         rmse_validation = rmse(y_validation, ŷ_validation)
-        #rmse_train = rmse(y_train, ŷ_train)
-        @info "rmse" validation=rmse_validation #train=rmse_train
+        rmse_train = rmse(y_train, ŷ_train)
+        @info "rmse" validation=rmse_validation train=rmse_train log_step_increment=0
         cat_z_validation = cat_z_ratio(y_validation, ŷ_validation)
-        #cat_z_train = cat_z_ratio(y_train, ŷ_train)
-        @info "catastrophic z ratio" validation=cat_z_validation #train=cat_z_train
+        cat_z_train = cat_z_ratio(y_train, ŷ_train)
+        @info "catastrophic z ratio" validation=cat_z_validation train=cat_z_train
 
         if cat_z_validation < cat_z_validation_star
             i = 0

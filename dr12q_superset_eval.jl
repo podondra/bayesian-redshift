@@ -82,8 +82,20 @@ open("data/dr12q_superset_test.lst", "w") do file
 	writedlm(file, sort(filenames_test))
 end
 
+# ╔═╡ aae3e861-1c60-48c1-b070-3a40e712885c
+md"""
+## Regression Fully Connected Network
+"""
+
+# ╔═╡ 77becfae-894d-46fd-b0b2-b09e2e2a0a17
+begin
+	reg_fc = BSON.load("models/regression_fc.bson")[:model] |> gpu
+	ŷ_reg_fc = Neural.regress(reg_fc, X_valid) |> cpu
+	Evaluation.rmse(y_valid, ŷ_reg_fc), Evaluation.median_Δv(y_valid, ŷ_reg_fc), Evaluation.cat_z_ratio(y_valid, ŷ_reg_fc)
+end
+
 # ╔═╡ 646c8844-d25a-4453-a4d9-e6f6279c183b
-md"## Regression Model"
+md"## Regression Convolutional Network"
 
 # ╔═╡ edd6e898-6797-11eb-2cee-791764fb425a
 begin
@@ -131,8 +143,20 @@ begin
 		layout=@layout [a; b])
 end
 
+# ╔═╡ a54b57cf-2d52-4029-b69a-09d5cc62ed00
+md"""
+## Classfication Fully Connected Network
+"""
+
+# ╔═╡ 2ccf27f6-5da0-463b-a6c7-f7f5711825ef
+begin
+	clf_fc = BSON.load("models/classification_fc.bson")[:model] |> gpu
+	ŷ_clf_fc = Neural.classify(clf_fc, X_valid) |> cpu
+	Evaluation.rmse(y_valid, ŷ_clf_fc), Evaluation.median_Δv(y_valid, ŷ_clf_fc), Evaluation.cat_z_ratio(y_valid, ŷ_clf_fc)
+end
+
 # ╔═╡ c9c00f77-4f40-445c-b348-70754dfce19c
-md"## Classification Model"
+md"## Classification Convolutional Network"
 
 # ╔═╡ 734bf33f-3f44-42d3-9c69-98b111e5495b
 minimum(y_train), maximum(y_train), length(0:0.01:6.44)
@@ -251,12 +275,16 @@ Evaluation.cat_z_ratio(dr12q_df[!, :z_vi], ŷ_test)
 # ╠═aaae60cf-8275-488f-a98e-97dfe8a57890
 # ╠═0a862141-d497-47e4-90c6-b36756f3b76c
 # ╠═3288aeab-05c2-47c3-bd31-070bf0dbc43f
+# ╟─aae3e861-1c60-48c1-b070-3a40e712885c
+# ╠═77becfae-894d-46fd-b0b2-b09e2e2a0a17
 # ╟─646c8844-d25a-4453-a4d9-e6f6279c183b
 # ╠═edd6e898-6797-11eb-2cee-791764fb425a
 # ╠═dcfade4f-12c3-4aa3-97e1-fb4c63f72cb4
 # ╠═e6d5d6fa-6aab-11eb-0434-19c6a5a97099
 # ╠═5f25ed6f-ef8d-49c0-993d-e3d5c445fd99
 # ╠═1d52576a-6abb-11eb-2dd8-c388b2365ddd
+# ╟─a54b57cf-2d52-4029-b69a-09d5cc62ed00
+# ╠═2ccf27f6-5da0-463b-a6c7-f7f5711825ef
 # ╟─c9c00f77-4f40-445c-b348-70754dfce19c
 # ╠═734bf33f-3f44-42d3-9c69-98b111e5495b
 # ╠═cd79f25b-36e0-463a-80b6-ebc622aa75d2
