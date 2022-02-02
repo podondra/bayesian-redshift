@@ -1,8 +1,13 @@
 #!/bin/bash
-#SBATCH --partition=cpufast --time=4:00:00
-#SBATCH --nodes=1 --ntasks-per-node=1 --cpus-per-task=1
-#SBATCH --mem=32G
-#SBATCH --job-name=pluto --output=misc/pluto.out
+#SBATCH --partition=gpufast
+#SBATCH --gres=gpu:1
+#SBATCH --time=4:00:00
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=64G
+#SBATCH --job-name=pluto_gpu
+#SBATCH --output=misc/pluto_gpu.out
 
 # get tunneling info
 XDG_RUNTIME_DIR=""
