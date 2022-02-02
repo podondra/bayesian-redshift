@@ -11,7 +11,7 @@ const T = 20
 dr16q_fid = h5open("data/dr16q_superset.hdf5", "r+")
 X = read(dr16q_fid, "X") |> gpu
 
-model = BSON.load("models/mc_dropout-wd=1e-4.bson")[:model] |> gpu
+model = BSON.load("models/bayes_sznet_1e-4.bson")[:model] |> gpu
 trainmode!(model)
 
 n = size(X, 2)
