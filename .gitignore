@@ -4,6 +4,7 @@
 !/data/dr12q_superset_valid.lst
 !/data/dr12q_superset_test.lst
 !/data/dr16q_superset.mis
+!/data/xmatch.csv
 /misc/
 /runs/
 
