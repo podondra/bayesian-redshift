@@ -5,7 +5,7 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 3621f840-5fcd-11eb-3be8-15ac4ab1b566
-using DataFrames, DelimitedFiles, FITSIO, HDF5, Statistics, StatsPlots
+using CSV, DataFrames, DelimitedFiles, FITSIO, HDF5, Statistics, StatsPlots
 
 # ╔═╡ 856fa719-2ced-4878-b720-a844ef7e3afb
 include("Utils.jl"); import .Utils
@@ -113,6 +113,29 @@ end
 # ╔═╡ 1855c0f1-6e9e-4ef2-b436-ce51d865f8ce
 @df subset histogram(:sn_median_all, xlabel="SN_MEDIAN_ALL")
 
+# ╔═╡ 27c397b7-03d5-4c0c-97e3-a0144f30643a
+md"""
+## Random Visual Inspection of 10k Spectra
+"""
+
+# ╔═╡ 2dac759a-667a-49e7-9bf3-8fd099a5baea
+sum(subset.pipe_corr_10k .>= 0), sum(subset.z_10k .> -1)
+
+# ╔═╡ b34ccfe7-adc8-4501-9c5b-67a5f2598d67
+crossmatch = DataFrame(CSV.File("data/cross-match.csv"))
+
+# ╔═╡ f0186892-4701-4a75-9a3a-25d360d0c3a2
+begin
+	n = size(subset, 1)
+	subset.idx = 1:n
+	subset_10k = antijoin(
+		subset[subset.z_10k .> -1, :], crossmatch,
+		on=[:plate => :plate_dr16q, :mjd => :mjd_dr16q, :fiberid => :fiberid_dr16q])
+	idx_10k = zeros(Bool, n)
+	idx_10k[subset_10k.idx] .= true
+	sum(idx_10k)
+end
+
 # ╔═╡ c66ea292-614c-11eb-2bc7-675d0b185c03
 md"## HDF5"
 
@@ -143,7 +166,8 @@ begin
 	write_dataset(fid, "z_pca", convert(Vector{Float32}, subset.z_pca))
 	write_dataset(fid, "z_qn", convert(Vector{Float32}, subset.z_qn))
 	write_dataset(fid, "sn_median_all", subset.sn_median_all)
-	write_dataset(h, "is_qso_final", subset.is_qso_final)
+	write_dataset(fid, "is_qso_final", subset.is_qso_final)
+	write_dataset(fid, "idx_10k", idx_10k)
 	close(fid)
 end
 
@@ -166,6 +190,10 @@ end
 # ╠═64cf07d3-f853-4bab-b208-156104413b9d
 # ╠═cc862a1a-ee95-4e83-8371-f4892a99d44a
 # ╠═1855c0f1-6e9e-4ef2-b436-ce51d865f8ce
+# ╟─27c397b7-03d5-4c0c-97e3-a0144f30643a
+# ╠═2dac759a-667a-49e7-9bf3-8fd099a5baea
+# ╠═b34ccfe7-adc8-4501-9c5b-67a5f2598d67
+# ╠═f0186892-4701-4a75-9a3a-25d360d0c3a2
 # ╟─c66ea292-614c-11eb-2bc7-675d0b185c03
 # ╠═1881c878-6b6d-11eb-2f91-e984e48285cc
 # ╠═d89f83d6-614d-11eb-170b-e1a7febab65e

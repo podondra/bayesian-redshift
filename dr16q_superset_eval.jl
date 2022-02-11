@@ -6,28 +6,15 @@ using InteractiveUtils
 
 # ╔═╡ bdb521fa-acd6-11eb-0d41-2d68a7abecb2
 begin
-	using CSV, DataFrames, FITSIO, HDF5, Printf, Random, Statistics, StatsBase, StatsPlots
-	
+	using CSV, DataFrames, HDF5, Printf, Random, Statistics, StatsBase, StatsPlots
 	include("Evaluation.jl")
 	include("Neural.jl")
 	include("Utils.jl")
-	import .Evaluation
-	import .Neural
-	import .Utils
+	import .Evaluation, .Neural, .Utils
 end
 
 # ╔═╡ fce2913d-6c91-492b-9b98-81f5c886c467
 md"# Generalisation to DR16Q Superset"
-
-# ╔═╡ 5d06b901-48ac-4ffe-9435-1d8f777c7409
-function evaluate(z, ẑ)
-	Dict(
-		"rmse" => Evaluation.rmse(z, ẑ),
-		"mean Δv" => Evaluation.meanΔv(z, ẑ),
-		"std Δv" => std(Evaluation.computeΔv(z, ẑ)),
-		"median Δv" => Evaluation.medianΔv(z, ẑ),
-		"cfr" => Evaluation.cfr(z, ẑ))
-end
 
 # ╔═╡ a13527ac-4670-4a2f-a390-17700d707705
 begin
@@ -35,7 +22,7 @@ begin
 	id = read(superset, "id")
 	n = size(id, 2)
 	X = read(superset, "X")
-	df_base = DataFrame(
+	df_orig = DataFrame(
 		plate=id[1, :],	mjd=id[2, :], fiberid=id[3, :],
 		ẑ=read(superset, "z_pred"),
 		ẑ_std=read(superset, "z_pred_std"),
@@ -56,10 +43,11 @@ begin
 		z_pca=read(superset, "z_pca"),
 		z_qn=read(superset, "z_qn"),
 		sn=read(superset, "sn_median_all"),
-		is_qso_final=read(superset, "is_qso_final"))
+		is_qso_final=read(superset, "is_qso_final"),
+		idx_10k=read(superset, "idx_10k"))
 	ẑs = Float32.(read(superset, "zs_pred"))
 	close(superset)
-	df_base
+	df_orig
 end
 
 # ╔═╡ 649c5981-e53b-4258-80cf-946c9b7b7a28
@@ -74,15 +62,15 @@ function preview(df, i)
 	Utils.plot_spectral_lines!(spec.ẑ, color=:red, location=:bottom)
 end
 
-# ╔═╡ d1770126-cb47-47ae-844a-268210927dfb
-begin
-	df_z = df_base[df_base.z .> -1, :]    # value -1 is the missing value
-	density(df_z.z, label="Primary Redshift", xlabel="Redshift", ylabel="Density")
-	density!(df_z.ẑ, label="MC Dropout")
+# ╔═╡ 5d06b901-48ac-4ffe-9435-1d8f777c7409
+function evaluate(z, ẑ)
+	Dict(
+		"rmse" => Evaluation.rmse(z, ẑ),
+		"mean Δv" => Evaluation.meanΔv(z, ẑ),
+		"std Δv" => std(Evaluation.computeΔv(z, ẑ)),
+		"median Δv" => Evaluation.medianΔv(z, ẑ),
+		"cfr" => Evaluation.cfr(z, ẑ))
 end
-
-# ╔═╡ b6bc407f-2fd6-4739-ae1d-da96ff984526
-histogram(df_base.sn, xlabel="Signal to Noise", ylabel="Count")
 
 # ╔═╡ 42dea5de-1b8f-40a0-981f-0e0abd9cf75c
 md"## On-Edge Predictions"
@@ -101,14 +89,14 @@ end
 
 # ╔═╡ 427677f2-a2fb-4971-8a26-f6f680249afa
 begin
-	histogram(df_base.entropy, label="All", xlabel="Entropy", ylabel="Count")
-	histogram!(df_base.entropy[idx_edge], label="On-Edge")
-	histogram!(df_base.entropy[.~idx_edge], label="Without On-Edge")
+	histogram(df_orig.entropy, label="All", xlabel="Entropy", ylabel="Count")
+	histogram!(df_orig.entropy[idx_edge], label="On-Edge")
+	histogram!(df_orig.entropy[.~idx_edge], label="Without On-Edge")
 end
 
 # ╔═╡ 14f51f9f-5d5e-42a0-b084-7973867dcef4
 begin
-	df = copy(df_base)
+	df = copy(df_orig)
 	df.entropy[idx_edge] .= 0
 	histogram(df.entropy)
 end
@@ -119,14 +107,12 @@ md"## $z > 6.445$"
 # ╔═╡ 66851320-f094-4b66-a006-c9cfccc1a816
 begin
 	df_high_z = df[df.z .> 6.445, :]
+	n_high_z = size(df_high_z, 1)
 	countmap(df_high_z.source_z)
 end
 
-# ╔═╡ 2f6d398e-5a9f-4f23-82a0-274603456444
-preview(df_high_z, rand(1:size(df_high_z, 1)))
-
 # ╔═╡ 82912482-45d7-46b1-84c5-0f0695a94954
-first_vi, second_vi = (1:size(df_high_z, 1))[df_high_z.source_z .== "VI"]
+first_vi, second_vi = (1:n_high_z)[df_high_z.source_z .== "VI"]
 
 # ╔═╡ 85c11afd-00ed-4bb2-bd7a-5522d2b40132
 preview(df_high_z, first_vi)
@@ -140,25 +126,8 @@ preview(df, 1412574)
 # ╔═╡ b662295b-9bfd-4765-b20c-bd9185acc7e6
 md"## Random Visual Inspection of 10k Spectra"
 
-# ╔═╡ 2e61071f-c137-4f58-9059-f26220817455
-df_10k_all = df[df.pipe_corr_10k .>= 0, :]
-
-# ╔═╡ 9dce7522-1de2-456c-be4d-85f91e0b06a5
-df_10k_missing = df_10k_all[df_10k_all.z_10k .<= -1, :]
-
-# ╔═╡ b2be2fbf-c035-46fb-8b9d-09bb4023204c
-df_xmatch = DataFrame(CSV.File("data/xmatch.csv"))
-
-# ╔═╡ f6f3c483-7efd-4b4e-9437-d5a5ac663a20
-df_10k = antijoin(
-	df_10k_all[df_10k_all.z_10k .> -1, :], df_xmatch,
-	on=[:plate => :plate_dr16q, :mjd => :mjd_dr16q, :fiberid => :fiberid_dr16q])
-
-# ╔═╡ 53e40953-7e3f-44ea-a629-7dca5d1834b1
-size(df_10k_all, 1), size(df_10k, 1), size(df_xmatch, 1), size(df_10k_missing, 1)
-
-# ╔═╡ af07e531-cec1-4ee2-bb9c-916a8b038a7d
-countmap(df_10k_missing.z_10k)
+# ╔═╡ 00803c53-a440-482e-904b-29244ddbc596
+df_10k = df[df.idx_10k, :]
 
 # ╔═╡ 0211a7d5-f744-4331-a55c-6860716c2109
 evaluate(df_10k.z_10k, df_10k.ẑ)
@@ -170,43 +139,46 @@ evaluate(df_10k.z_10k, df_10k.z_pipe)
 evaluate(df_10k.z_10k, df_10k.z_pca)
 
 # ╔═╡ b69e11ff-1249-43fb-a423-61efa0945030
-evaluate(df_10k.z_10k, df_10k.z_qn)
+begin
+	idx_10k_qn = df_10k.z_qn .> -1
+	evaluate(df_10k.z_10k[idx_10k_qn], df_10k.z_qn[idx_10k_qn])
+end
 
 # ╔═╡ c6efefc5-3105-4d3f-aed1-215ac7fb3f3d
 begin
 	Δv_pred = Evaluation.computeΔv(df_10k.z_10k, df_10k.ẑ)
 	Δv_pipe = Evaluation.computeΔv(df_10k.z_10k, df_10k.z_pipe)
 	Δv_pca = Evaluation.computeΔv(df_10k.z_10k, df_10k.z_pca)
-	Δv_qn = Evaluation.computeΔv(df_10k.z_10k, df_10k.z_qn)
+	Δv_qn = Evaluation.computeΔv(df_10k.z_10k[idx_10k_qn], df_10k.z_qn[idx_10k_qn])
 	stop = max(maximum(Δv_pred), maximum(Δv_pipe), maximum(Δv_pca), maximum(Δv_qn))
 	bins = range(0, stop=stop, length=128)
 	plot(
-		Δv_pred,
-		seriestype=:stephist, bins=bins,
+		Δv_pred, seriestype=:stephist, bins=bins,
 		yaxis=:log, label="Bayesian SZNet", xlabel="Δv", ylabel="Count")
 	plot!(
-		Δv_pipe,
-		seriestype=:stephist, bins=bins,
+		Δv_pipe, seriestype=:stephist, bins=bins,
 		yaxis=:log, label="Pipeline")
 end
 
-# ╔═╡ a1e01e27-5f81-467a-b6ca-4195737c7327
-begin
-	density(
-		df_10k.z_10k, yaxis=:log, label="Random Visual Inspection",
-		xlabel="Redshift", ylabel="Density")
-	density!(df_10k.ẑ, yaxis=:log, label="Prediction")
-end
-
 # ╔═╡ 9f7f4a61-16f8-4920-88e6-ac5364c603b1
-histogram2d(
-	df_10k.z_10k, df_10k.ẑ, bins=Neural.N_LABELS,
-	xlabel="Visual Redshift", ylabel="Predicted Redshift")
+@df df_10k histogram2d(
+	:z_10k, :ẑ, bins=Neural.N_LABELS,
+	xlabel="Visual Redshift", ylabel="SZNet Redshift")
 
 # ╔═╡ 0ca11ff7-c0af-475c-be54-35c6b8fa5c84
-histogram2d(
-	df_10k.z_10k, df_10k.z_pipe, bins=Neural.N_LABELS,
+@df df_10k histogram2d(
+	:z_10k, :z_pipe, bins=Neural.N_LABELS,
 	xlabel="Visual Redshift", ylabel="Pipeline Redshift")
+
+# ╔═╡ 77542e57-362c-45d0-8612-b71b473f21cd
+@df df_10k histogram2d(
+	:z_10k, :z_pca, bins=Neural.N_LABELS,
+	xlabel="Visual Redshift", ylabel="PCA Redshift")
+
+# ╔═╡ 04895dc3-5bc4-4468-86be-b823f64a6608
+@df df_10k histogram2d(
+	:z_10k[idx_10k_qn], :z_qn[idx_10k_qn], bins=Neural.N_LABELS,
+	xlabel="Visual Redshift", ylabel="QuasarNET Redshift")
 
 # ╔═╡ 573e6e02-a2a9-457f-b2fd-4acdd921c090
 md"## Suggestions of Redshifts"
@@ -217,7 +189,7 @@ ẑs
 # ╔═╡ c84f8e62-c1e4-4ea8-b69d-8d51175f10e3
 begin
 	i_sug = 54463
-	df.plate[i_sug], df.mjd[i_sug], df.fiberid[i_sug], df.source_z[i_sug], countmap(ẑs[:, i_sug])
+	countmap(ẑs[:, i_sug])
 end
 
 # ╔═╡ b8c77084-6ee8-4615-96c7-deb317614e0c
@@ -243,12 +215,6 @@ preview(df, i_high_entr[2])
 
 # ╔═╡ eb11930b-8f4f-4301-a462-a41fa54d980f
 md"## Utilisation of Uncertainties"
-
-# ╔═╡ 08a0f0ac-731c-41f5-909b-3b5d920567ec
-histogram(df_10k.entropy)
-
-# ╔═╡ 24cb3a20-9f22-424a-bba8-3dca7fac410d
-histogram(df.entropy_std)
 
 # ╔═╡ d2c25b73-2a9d-40db-a439-98599e80a33c
 begin
@@ -334,9 +300,7 @@ md"## Catalogues"
 # ╔═╡ 0b9c530b-e7f3-4d07-b059-fe64f1d0cc0b
 begin
 	catalogue = DataFrame(
-		plate=id[1, :],
-		mjd=id[2, :],
-		fiberid=id[3, :],
+		plate=id[1, :],	mjd=id[2, :], fiberid=id[3, :],
 		z_pred=df.ẑ,
 		z=df.z,
 		source_z=df.source_z,
@@ -478,37 +442,30 @@ preview(df, 44949)
 # ╔═╡ Cell order:
 # ╟─fce2913d-6c91-492b-9b98-81f5c886c467
 # ╠═bdb521fa-acd6-11eb-0d41-2d68a7abecb2
+# ╠═a13527ac-4670-4a2f-a390-17700d707705
 # ╟─649c5981-e53b-4258-80cf-946c9b7b7a28
 # ╟─5d06b901-48ac-4ffe-9435-1d8f777c7409
-# ╠═a13527ac-4670-4a2f-a390-17700d707705
-# ╠═d1770126-cb47-47ae-844a-268210927dfb
-# ╠═b6bc407f-2fd6-4739-ae1d-da96ff984526
 # ╟─42dea5de-1b8f-40a0-981f-0e0abd9cf75c
-# ╠═8840bba3-e870-4cd9-a55f-dad3ee5205f2
 # ╠═427677f2-a2fb-4971-8a26-f6f680249afa
+# ╠═8840bba3-e870-4cd9-a55f-dad3ee5205f2
 # ╠═14f51f9f-5d5e-42a0-b084-7973867dcef4
 # ╟─de5b8936-7b64-43e0-8ab5-057da3f015fc
 # ╠═66851320-f094-4b66-a006-c9cfccc1a816
-# ╠═2f6d398e-5a9f-4f23-82a0-274603456444
 # ╠═82912482-45d7-46b1-84c5-0f0695a94954
 # ╠═85c11afd-00ed-4bb2-bd7a-5522d2b40132
 # ╠═2de2465a-4470-4afa-94eb-785e8df97752
 # ╠═020a43d8-57e7-4575-a5ce-0189f518a224
 # ╟─b662295b-9bfd-4765-b20c-bd9185acc7e6
-# ╠═2e61071f-c137-4f58-9059-f26220817455
-# ╠═9dce7522-1de2-456c-be4d-85f91e0b06a5
-# ╠═b2be2fbf-c035-46fb-8b9d-09bb4023204c
-# ╠═f6f3c483-7efd-4b4e-9437-d5a5ac663a20
-# ╠═53e40953-7e3f-44ea-a629-7dca5d1834b1
-# ╠═af07e531-cec1-4ee2-bb9c-916a8b038a7d
+# ╠═00803c53-a440-482e-904b-29244ddbc596
 # ╠═0211a7d5-f744-4331-a55c-6860716c2109
 # ╠═cf7c4ece-6bf8-4e53-85c1-1acdb2d37be1
 # ╠═dc462c4d-ec37-4459-87e6-87428f2229da
 # ╠═b69e11ff-1249-43fb-a423-61efa0945030
 # ╠═c6efefc5-3105-4d3f-aed1-215ac7fb3f3d
-# ╠═a1e01e27-5f81-467a-b6ca-4195737c7327
 # ╠═9f7f4a61-16f8-4920-88e6-ac5364c603b1
 # ╠═0ca11ff7-c0af-475c-be54-35c6b8fa5c84
+# ╠═77542e57-362c-45d0-8612-b71b473f21cd
+# ╠═04895dc3-5bc4-4468-86be-b823f64a6608
 # ╟─573e6e02-a2a9-457f-b2fd-4acdd921c090
 # ╠═a3db9fd5-a9a1-46c3-9097-7573d48bc5df
 # ╠═c84f8e62-c1e4-4ea8-b69d-8d51175f10e3
@@ -518,8 +475,6 @@ preview(df, 44949)
 # ╠═dfe23e93-904b-481f-b247-158637cd361e
 # ╠═75767b4a-cfc6-45e0-a270-5f237f135bed
 # ╟─eb11930b-8f4f-4301-a462-a41fa54d980f
-# ╠═08a0f0ac-731c-41f5-909b-3b5d920567ec
-# ╠═24cb3a20-9f22-424a-bba8-3dca7fac410d
 # ╠═d2c25b73-2a9d-40db-a439-98599e80a33c
 # ╠═01a4659d-4b10-4532-8086-0bf22fbf4825
 # ╠═406d2e59-6b1e-47ea-bb81-33a264e5134d
