@@ -6,6 +6,8 @@ data/*
 !data/dr16q_superset.mis
 !data/cross_match.csv
 misc/
+models/*
+!models/sznet.bson
 runs/
 slurm/
 

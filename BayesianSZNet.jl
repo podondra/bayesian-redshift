@@ -15,7 +15,7 @@ using Statistics
 using StatsBase
 using TensorBoardLogger
 
-export computeΔv, mcrps, rmse, pithist
+export computeΔv, mcrps, rmse, pithist, confint
 export FCNN, SZNet
 export getdr12data, forward, multitrain, sample, train!
 export LOGLAMMIN, LOGLAMMAX
@@ -82,7 +82,7 @@ end
 
 function pithist(z, ẑs)
     histogram(
-        [ecdf(ẑs[:, i])(z[i]) for i in 1:length(z)], normalize=:pdf,
+        [ecdf(ẑs[:, i])(z[i]) for i in 1:length(z)], normalize=:pdf, bins=range(0, stop=1, length=64),
         xlabel="Probability Integral Transform", ylabel="Density", label=:none)
 end
 
@@ -156,12 +156,12 @@ function train!(model, X_tr, z_tr, X_va, z_va; modelname, patience, λ)
     return mcrps_va_star
 end
 
-function multitrain(Constructor, X_tr, z_tr, X_va, z_va; constructorname, p, patience, runs=10, λ)
+function multitrain(Constructor, X_tr, z_tr, X_va, z_va; constructorname, p, patience, runs=5, λ)
     for i in 1:runs
         modelname = "$(constructorname)_$(i)_$(p)_$(λ)"
         model = Constructor(p)
         mcrps_va_star = train!(model, X_tr, z_tr, X_va, z_va; modelname, patience, λ)
-        println(mcrps_va_star)
+        println(p, ",", λ, ",", mcrps_va_star)
     end
 end
 
